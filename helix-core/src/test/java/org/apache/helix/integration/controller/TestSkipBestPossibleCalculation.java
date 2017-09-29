@@ -19,7 +19,6 @@ package org.apache.helix.integration.controller;
  * under the License.
  */
 
-import java.util.Map;
 import org.apache.helix.HelixConstants;
 import org.apache.helix.TestHelper;
 import org.apache.helix.controller.stages.AttributeName;
@@ -61,29 +60,35 @@ public class TestSkipBestPossibleCalculation extends ZkStandAloneCMTestBase {
     Assert.assertEquals(cache.getCachedResourceAssignments().size(), numResource);
 
     cache.notifyDataChange(HelixConstants.ChangeType.INSTANCE_CONFIG);
+    cache.refresh(_manager.getHelixDataAccessor());
     Assert.assertEquals(cache.getCachedResourceAssignments().size(), 0);
     runStage(_manager, event, new BestPossibleStateCalcStage());
     Assert.assertEquals(cache.getCachedResourceAssignments().size(), numResource);
 
     cache.notifyDataChange(HelixConstants.ChangeType.IDEAL_STATE);
+    cache.refresh(_manager.getHelixDataAccessor());
     Assert.assertEquals(cache.getCachedResourceAssignments().size(), 0);
     runStage(_manager, event, new BestPossibleStateCalcStage());
     Assert.assertEquals(cache.getCachedResourceAssignments().size(), numResource);
 
     cache.notifyDataChange(HelixConstants.ChangeType.LIVE_INSTANCE);
+    cache.refresh(_manager.getHelixDataAccessor());
     Assert.assertEquals(cache.getCachedResourceAssignments().size(), 0);
     runStage(_manager, event, new BestPossibleStateCalcStage());
     Assert.assertEquals(cache.getCachedResourceAssignments().size(), numResource);
 
     cache.requireFullRefresh();
+    cache.refresh(_manager.getHelixDataAccessor());
     Assert.assertEquals(cache.getCachedResourceAssignments().size(), 0);
     runStage(_manager, event, new BestPossibleStateCalcStage());
     Assert.assertEquals(cache.getCachedResourceAssignments().size(), numResource);
 
     cache.notifyDataChange(HelixConstants.ChangeType.CURRENT_STATE);
+    cache.refresh(_manager.getHelixDataAccessor());
     Assert.assertEquals(cache.getCachedResourceAssignments().size(), numResource);
 
     cache.notifyDataChange(HelixConstants.ChangeType.RESOURCE_CONFIG);
-    Assert.assertEquals(cache.getCachedResourceAssignments().size(), numResource);
+    cache.refresh(_manager.getHelixDataAccessor());
+    Assert.assertEquals(cache.getCachedResourceAssignments().size(), 0);
   }
 }
