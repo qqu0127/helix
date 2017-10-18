@@ -21,7 +21,8 @@ package org.apache.helix.controller.strategy;
 
 import org.apache.helix.HelixManager;
 import org.apache.helix.ZNRecord;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,7 +44,7 @@ import java.util.TreeSet;
 @Deprecated
 public class AutoRebalanceStrategy {
 
-  private static Logger logger = Logger.getLogger(AutoRebalanceStrategy.class);
+  private static Logger logger = LoggerFactory.getLogger(AutoRebalanceStrategy.class);
 
   private final String _resourceName;
   private final List<String> _partitions;
