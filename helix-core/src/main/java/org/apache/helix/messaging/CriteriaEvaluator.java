@@ -19,7 +19,6 @@ package org.apache.helix.messaging;
  * under the License.
  */
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +29,7 @@ import java.util.regex.Pattern;
 import org.apache.helix.Criteria;
 import org.apache.helix.Criteria.DataSource;
 import org.apache.helix.HelixDataAccessor;
+import org.apache.helix.HelixException;
 import org.apache.helix.HelixManager;
 import org.apache.helix.HelixProperty;
 import org.apache.helix.PropertyKey;
@@ -61,14 +61,24 @@ public class CriteriaEvaluator {
       if (Strings.isNullOrEmpty(resourceName)) {
         properties = accessor.getChildValues(keyBuilder.externalViews());
       } else {
-        properties = Collections.singletonList(accessor.getProperty(keyBuilder.externalView(resourceName)));
+        HelixProperty data = accessor.getProperty(keyBuilder.externalView(resourceName));
+        if (data == null) {
+          throw new HelixException(
+              String.format("Specified resource %s externalView is not found!", resourceName));
+        }
+        properties = Collections.singletonList(data);
       }
     } else if (dataSource == DataSource.IDEALSTATES) {
       String resourceName = recipientCriteria.getResource();
       if (Strings.isNullOrEmpty(resourceName)) {
         properties = accessor.getChildValues(keyBuilder.idealStates());
       } else {
-        properties = Collections.singletonList(accessor.getProperty(keyBuilder.idealStates(resourceName)));
+        HelixProperty data = accessor.getProperty(keyBuilder.idealStates(resourceName));
+        if (data == null) {
+          throw new HelixException(
+              String.format("Specified resource %s idealState is not found!", resourceName));
+        }
+        properties = Collections.singletonList(data);
       }
     } else if (dataSource == DataSource.LIVEINSTANCES) {
       properties = accessor.getChildValues(keyBuilder.liveInstances());
