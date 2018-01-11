@@ -2,7 +2,8 @@ owners: [
  lxia,
  jxue,
  erkim,
- jjwang
+ jjwang,
+ hrzhang
 ]
 groups: [
  helix-reviewers
