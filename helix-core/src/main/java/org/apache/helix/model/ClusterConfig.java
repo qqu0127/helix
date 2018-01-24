@@ -31,6 +31,7 @@ import org.apache.helix.ZNRecord;
 import org.apache.helix.api.config.HelixConfigProperty;
 import org.apache.helix.api.config.StateTransitionThrottleConfig;
 import org.apache.helix.api.config.StateTransitionTimeoutConfig;
+import org.apache.helix.api.config.ViewClusterSourceConfig;
 
 /**
  * Cluster configurations

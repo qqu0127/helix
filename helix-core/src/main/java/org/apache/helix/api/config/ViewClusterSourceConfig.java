@@ -1,4 +1,4 @@
-package org.apache.helix.model;
+package org.apache.helix.api.config;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -20,6 +20,7 @@ package org.apache.helix.model;
  */
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -48,11 +49,17 @@ public class ViewClusterSourceConfig {
   @JsonProperty("properties")
   private List<PropertyType> _properties;
 
-  public ViewClusterSourceConfig() {
-    _name = "";
-    _zkAddress = "";
-    _properties = Collections.emptyList();
+  private ViewClusterSourceConfig() {
+  }
 
+  public ViewClusterSourceConfig(String name, String zkAddress, List<PropertyType> properties) {
+    _name = name;
+    _zkAddress = zkAddress;
+    _properties = properties;
+  }
+
+  public ViewClusterSourceConfig(ViewClusterSourceConfig config) {
+    this(config.getName(), config.getZkAddress(), new ArrayList<>(config.getProperties()));
   }
 
   public void setName(String name) {
@@ -87,6 +94,23 @@ public class ViewClusterSourceConfig {
 
   public String toJson() throws IOException {
     return new ObjectMapper().writeValueAsString(this);
+  }
+
+  public String toString() {
+    return String.format("name=%s; zkAddr=%s; properties=%s", _name, _zkAddress, _properties);
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    if (other == null || !(other instanceof ViewClusterSourceConfig)) {
+      return false;
+    }
+    ViewClusterSourceConfig otherConfig = (ViewClusterSourceConfig) other;
+
+    return _name.equals(otherConfig.getName()) && _zkAddress.equals(otherConfig.getZkAddress())
+        && _properties.containsAll(otherConfig.getProperties()) && otherConfig.getProperties()
+        .containsAll(_properties);
+
   }
 
   public static ViewClusterSourceConfig fromJson(String jsonString) {

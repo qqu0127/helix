@@ -1,4 +1,4 @@
-package org.apache.helix.controller.stages;
+package org.apache.helix.view.common;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,19 +19,6 @@ package org.apache.helix.controller.stages;
  * under the License.
  */
 
-public enum ClusterEventType {
-  IdealStateChange,
-  CurrentStateChange,
-  ConfigChange,
-  ClusterConfigChange,
-  ResourceConfigChange,
-  InstanceConfigChange,
-  LiveInstanceChange,
-  MessageChange,
-  ExternalViewChange,
-  Resume,
-  PeriodicalRebalance,
-  ViewClusterPeriodicRefresh,
-  StateVerifier,
-  Unknown
+public enum ViewAggregatorEventAttributes {
+  ViewClusterForceRefresh,
 }

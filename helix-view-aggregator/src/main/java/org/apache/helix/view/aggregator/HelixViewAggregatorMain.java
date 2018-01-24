@@ -1,4 +1,4 @@
-package org.apache.helix.controller.stages;
+package org.apache.helix.view.aggregator;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -19,19 +19,16 @@ package org.apache.helix.controller.stages;
  * under the License.
  */
 
-public enum ClusterEventType {
-  IdealStateChange,
-  CurrentStateChange,
-  ConfigChange,
-  ClusterConfigChange,
-  ResourceConfigChange,
-  InstanceConfigChange,
-  LiveInstanceChange,
-  MessageChange,
-  ExternalViewChange,
-  Resume,
-  PeriodicalRebalance,
-  ViewClusterPeriodicRefresh,
-  StateVerifier,
-  Unknown
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class HelixViewAggregatorMain {
+  private static Logger logger = LoggerFactory.getLogger(HelixViewAggregatorMain.class);
+  /**
+   * @param args
+   * @throws Exception
+   */
+  public static void main(String[] args) throws Exception {
+    // TODO: implement this function as launching HelixViewAggregator using CLI
+  }
 }

@@ -138,6 +138,26 @@ public class BasicClusterDataCache {
   }
 
   /**
+   * Clear the corresponding cache based on change type
+   * @param changeType
+   */
+  public synchronized void clearCache(HelixConstants.ChangeType changeType) {
+    switch (changeType) {
+    case LIVE_INSTANCE:
+      _liveInstanceMap.clear();
+      break;
+    case INSTANCE_CONFIG:
+      _instanceConfigMap.clear();
+      break;
+    case EXTERNAL_VIEW:
+      _externalViewMap.clear();
+      break;
+    default:
+      break;
+    }
+  }
+
+  /**
    * Indicate that a full read should be done on the next refresh
    */
   public synchronized void requireFullRefresh() {
