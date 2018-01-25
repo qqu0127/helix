@@ -519,8 +519,8 @@ public class TaskDriver {
     while (System.currentTimeMillis() <= endTime) {
       WorkflowContext workflowContext = getWorkflowContext(workflow);
 
-      if (workflowContext == null || !workflowContext.getWorkflowState()
-          .equals(TaskState.STOPPED)) {
+      if (workflowContext == null || workflowContext.getWorkflowState()
+          .equals(TaskState.IN_PROGRESS)) {
         Thread.sleep(1000);
       } else {
         // Successfully stopped
