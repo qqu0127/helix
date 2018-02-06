@@ -39,9 +39,9 @@ import org.slf4j.LoggerFactory;
 public class BasicClusterDataCache {
   protected final Logger LOG = LoggerFactory.getLogger(this.getClass().getName());
 
-  private Map<String, LiveInstance> _liveInstanceMap;
-  private Map<String, InstanceConfig> _instanceConfigMap;
-  private Map<String, ExternalView> _externalViewMap;
+  protected Map<String, LiveInstance> _liveInstanceMap;
+  protected Map<String, InstanceConfig> _instanceConfigMap;
+  protected Map<String, ExternalView> _externalViewMap;
   private final PropertyType _sourceDataType;
 
   protected String _clusterName;
