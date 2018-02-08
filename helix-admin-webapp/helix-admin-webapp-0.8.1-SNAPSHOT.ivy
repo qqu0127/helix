@@ -20,7 +20,7 @@ under the License.
 <ivy-module version="1.0">
 	<info organisation="org.apache.helix"
 		module="helix-admin-webapp"
-		revision="0.8.0-SNAPSHOT"
+		revision="0.8.1-SNAPSHOT"
 		status="integration"
 		publication="20120315141623"
 	/>

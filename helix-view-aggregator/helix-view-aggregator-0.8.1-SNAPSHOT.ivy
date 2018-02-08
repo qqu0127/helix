@@ -20,7 +20,7 @@ under the License.
 <ivy-module version="1.0">
 	<info organisation="org.apache.helix"
 		module="helix-view-aggregator"
-		revision="0.6.10-SNAPSHOT"
+		revision="0.8.1-SNAPSHOT"
 		status="integration"
 		publication="20170128141623"
 	/>

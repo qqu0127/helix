@@ -92,6 +92,25 @@ else
   echo "helix-rest/$ivy_file not exist"
 fi
 
+echo "bump up helix-view-aggregator/pom.xml"
+sed -i "s/${version}/${new_version}/g" helix-view-aggregator/pom.xml
+grep -C 1 "$new_version" helix-view-aggregator/pom.xml
+# git diff helix-view-aggregator/pom.xml
+
+ivy_file="helix-view-aggregator-"$version".ivy"
+new_ivy_file="helix-view-aggregator-"$new_version".ivy"
+# echo "$ivy_file"
+
+if [ -f helix-view-aggregator/$ivy_file ]; then
+  echo "bump up helix-view-aggregator/$ivy_file"
+  git mv "helix-view-aggregator/$ivy_file" "helix-view-aggregator/$new_ivy_file"
+  sed -i "s/${version}/${new_version}/g" "helix-view-aggregator/$new_ivy_file"
+  grep -C 1 "$new_version" "helix-view-aggregator/$new_ivy_file"
+else
+  echo "helix-view-aggregator/$ivy_file not exist"
+fi
+
+
 for POM in helix-agent/pom.xml recipes/task-execution/pom.xml recipes/pom.xml recipes/distributed-lock-manager/pom.xml recipes/rsync-replicated-file-system/pom.xml recipes/rabbitmq-consumer-group/pom.xml recipes/service-discovery/pom.xml
 do
   echo "bump up $POM"
