@@ -41,6 +41,8 @@ import org.apache.helix.controller.stages.ClusterEventType;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.LiveInstance;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * SourceClusterDataProvider listens to changes in 1 source cluster, notifies cluster data cache,
@@ -49,6 +51,8 @@ import org.apache.helix.model.LiveInstance;
 public class SourceClusterDataProvider extends BasicClusterDataCache
     implements InstanceConfigChangeListener, LiveInstanceChangeListener,
     ExternalViewChangeListener {
+  private static final Logger LOG = LoggerFactory.getLogger(SourceClusterDataProvider.class);
+
   private final HelixManager _helixManager;
   private final ClusterEventProcessor _eventProcessor;
 
