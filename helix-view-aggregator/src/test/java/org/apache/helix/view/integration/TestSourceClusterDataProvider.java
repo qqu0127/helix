@@ -25,7 +25,6 @@ import java.util.List;
 import org.apache.helix.PropertyType;
 import org.apache.helix.api.config.ViewClusterSourceConfig;
 import org.apache.helix.integration.manager.MockParticipantManager;
-import org.apache.helix.view.ViewAggregatorIntegrationTestBase;
 import org.apache.helix.view.dataprovider.SourceClusterDataProvider;
 import org.apache.helix.view.mock.MockClusterEventProcessor;
 import org.testng.Assert;
@@ -34,7 +33,7 @@ import org.testng.annotations.Test;
 public class TestSourceClusterDataProvider extends ViewAggregatorIntegrationTestBase {
   private static final int numSourceCluster = 1;
   private static final String stateModel = "MasterSlave";
-  private static final String testResource = "restResource";
+  private static final String testResource = "testResource";
 
   @Test
   public void testSourceClusterDataProviderWatchAndRefresh() throws Exception {
@@ -67,14 +66,14 @@ public class TestSourceClusterDataProvider extends ViewAggregatorIntegrationTest
     processor.resetHandledEventCount();
 
     // ListNames should work
-    Assert.assertEquals(dataProvider.getInstanceConfigNames().size(), numPaticipantCount);
-    Assert.assertEquals(dataProvider.getLiveInstanceNames().size(), numPaticipantCount);
+    Assert.assertEquals(dataProvider.getInstanceConfigNames().size(), numParticipant);
+    Assert.assertEquals(dataProvider.getLiveInstanceNames().size(), numParticipant);
     Assert.assertEquals(dataProvider.getExternalViewNames().size(), 0);
 
     processor.resetHandledEventCount();
 
     // rebalance resource to check external view related events
-    _gSetupTool.addResourceToCluster(clusterName, testResource, numPaticipantCount, stateModel);
+    _gSetupTool.addResourceToCluster(clusterName, testResource, numParticipant, stateModel);
     _gSetupTool.rebalanceResource(clusterName, testResource, 3);
     Thread.sleep(1000);
     Assert.assertTrue(processor.getHandledExternalViewChangeCount() > 0);
@@ -82,8 +81,8 @@ public class TestSourceClusterDataProvider extends ViewAggregatorIntegrationTest
 
     // refresh data provider will have correct data loaded
     dataProvider.refreshCache();
-    Assert.assertEquals(dataProvider.getLiveInstances().size(), numPaticipantCount);
-    Assert.assertEquals(dataProvider.getInstanceConfigMap().size(), numPaticipantCount);
+    Assert.assertEquals(dataProvider.getLiveInstances().size(), numParticipant);
+    Assert.assertEquals(dataProvider.getInstanceConfigMap().size(), numParticipant);
     Assert.assertEquals(dataProvider.getExternalViews().size(), 1);
     processor.resetHandledEventCount();
 

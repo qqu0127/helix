@@ -52,6 +52,7 @@ public class BasicClusterDataCache {
     _instanceConfigMap = new HashMap<>();
     _externalViewMap = new HashMap<>();
     _clusterName = clusterName;
+    requireFullRefresh();
   }
 
   /**

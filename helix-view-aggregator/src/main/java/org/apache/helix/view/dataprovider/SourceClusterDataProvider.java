@@ -34,8 +34,8 @@ import org.apache.helix.api.listeners.ExternalViewChangeListener;
 import org.apache.helix.api.listeners.InstanceConfigChangeListener;
 import org.apache.helix.api.listeners.LiveInstanceChangeListener;
 import org.apache.helix.api.listeners.PreFetch;
-import org.apache.helix.common.caches.BasicClusterDataCache;
 import org.apache.helix.common.ClusterEventProcessor;
+import org.apache.helix.common.caches.BasicClusterDataCache;
 import org.apache.helix.controller.stages.ClusterEvent;
 import org.apache.helix.controller.stages.ClusterEventType;
 import org.apache.helix.model.ExternalView;
@@ -110,8 +110,8 @@ public class SourceClusterDataProvider extends BasicClusterDataCache
       }
       _dataAccessor = _helixManager.getHelixDataAccessor();
       _propertyKeyBuilder = _dataAccessor.keyBuilder();
-      LOG.info(String
-          .format("%s started. Source cluster detail: %s", _helixManager.getInstanceName(),
+      LOG.info(String.format("Data provider %s (%s) started. Source cluster detail: %s",
+          _helixManager.getInstanceName(), hashCode(),
               _sourceClusterConfig.toString()));
     } catch(Exception e) {
       shutdown();
@@ -128,7 +128,7 @@ public class SourceClusterDataProvider extends BasicClusterDataCache
       try {
         _helixManager.disconnect();
         LOG.info(
-            String.format("Data provider %s shutdown cleanly.", _helixManager.getInstanceName()));
+            String.format("Data provider %s (%s) shutdown cleanly.", _helixManager.getInstanceName(), hashCode()));
       } catch (ZkInterruptedException e) {
         // OK
       }

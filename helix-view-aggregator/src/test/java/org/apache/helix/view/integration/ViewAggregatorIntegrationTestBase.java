@@ -1,4 +1,4 @@
-package org.apache.helix.view;
+package org.apache.helix.view.integration;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -29,7 +29,7 @@ import org.testng.annotations.BeforeClass;
 
 public class ViewAggregatorIntegrationTestBase extends ZkIntegrationTestBase {
   protected static final int numSourceCluster = 2;
-  protected static final int numPaticipantCount = 3;
+  protected static final int numParticipant = 3;
   protected static final String testSourceClusterNamePrefix = "testSourceCluster";
   protected static final String testParticipantNamePrefix = "testParticipant";
   protected static final String testControllerNamePrefix = "testController";
@@ -46,11 +46,11 @@ public class ViewAggregatorIntegrationTestBase extends ZkIntegrationTestBase {
           String.format("%s-%s-%s", testSourceClusterNamePrefix, this.hashCode(), i);
       _gSetupTool.addCluster(clusterName, false);
       // Setup participants
-      for (int j = 0; j < numPaticipantCount; j++) {
-        String instanceName =
-            String.format("%s-%s-%s", testParticipantNamePrefix, clusterName, j);
+      for (int j = 0; j < numParticipant; j++) {
+        String instanceName = String.format("%s-%s-%s", clusterName, testParticipantNamePrefix, j);
         _gSetupTool.addInstanceToCluster(clusterName, instanceName);
-        MockParticipantManager participant = new MockParticipantManager(ZK_ADDR, clusterName, instanceName);
+        MockParticipantManager participant =
+            new MockParticipantManager(ZK_ADDR, clusterName, instanceName);
         participant.syncStart();
         _allParticipants.add(participant);
       }

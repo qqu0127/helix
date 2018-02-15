@@ -20,9 +20,13 @@ package org.apache.helix.view.aggregator;
  */
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.I0Itec.zkclient.exception.ZkInterruptedException;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixException;
@@ -30,6 +34,7 @@ import org.apache.helix.HelixManager;
 import org.apache.helix.HelixManagerFactory;
 import org.apache.helix.InstanceType;
 import org.apache.helix.NotificationContext;
+import org.apache.helix.PropertyType;
 import org.apache.helix.api.config.ViewClusterSourceConfig;
 import org.apache.helix.api.listeners.ClusterConfigChangeListener;
 import org.apache.helix.api.listeners.PreFetch;
@@ -50,27 +55,27 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
   private static final int PROCESS_VIEW_CONFIG_CHANGE_BACKOFF_MS = 3 * 1000;
   private final String _viewClusterName;
   private final HelixManager _viewClusterManager;
+  private final Map<String, SourceClusterDataProvider> _dataProviderMap;
   private HelixDataAccessor _dataAccessor;
 
   // Worker that processes source cluster events and refresh view cluster
   private ClusterEventProcessor _aggregator;
-  private boolean _refreshViewCluster;
+  private AtomicBoolean _refreshViewCluster;
 
   // Worker that processes view cluster config change
   private ClusterEventProcessor _viewConfigProcessor;
 
-  private Map<String, SourceClusterDataProvider> _dataProviderMap;
   private ClusterConfig _curViewClusterConfig;
   private Timer _viewClusterRefreshTimer;
   private ViewClusterRefresher _viewClusterRefresher;
 
   public HelixViewAggregator(String viewClusterName, String zkAddr) {
     _viewClusterName = viewClusterName;
-    _dataProviderMap = new HashMap<>();
+    _dataProviderMap = new ConcurrentHashMap<>();
     _viewClusterManager = HelixManagerFactory
         .getZKHelixManager(_viewClusterName, generateHelixManagerInstanceName(_viewClusterName),
             InstanceType.SPECTATOR, zkAddr);
-    _refreshViewCluster = false;
+    _refreshViewCluster = new AtomicBoolean(false);
     _aggregator = new ClusterEventProcessor(_viewClusterName, "Aggregator") {
       @Override
       public void handleEvent(ClusterEvent event) {
@@ -88,7 +93,8 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
 
   /**
    * Start controller main logic
-   * @throws Exception
+   * @throws Exception when HelixViewAggregator fails to start. Will try to shut it down before
+   *                   exception is thrown out
    */
   public void start() throws Exception {
     // Start workers
@@ -98,16 +104,16 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
     // Setup manager
     try {
       _viewClusterManager.connect();
-      _viewClusterManager.addClusterfigChangeListener(this);
       _dataAccessor = _viewClusterManager.getHelixDataAccessor();
+      _viewClusterManager.addClusterfigChangeListener(this);
     } catch (Exception e) {
+      shutdown();
       throw new HelixException("Failed to connect view cluster helix manager", e);
     }
 
     // Set up view cluster refresher
     _viewClusterRefresher =
-        new ViewClusterRefresher(_viewClusterName, _viewClusterManager.getHelixDataAccessor(),
-            _dataProviderMap);
+        new ViewClusterRefresher(_viewClusterName, _viewClusterManager.getHelixDataAccessor());
   }
 
   public void shutdown() {
@@ -137,7 +143,7 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
     // Clean up all data providers
     for (SourceClusterDataProvider provider : _dataProviderMap.values()) {
       logger
-          .info(String.format("Shutting data provider for source cluster %s", provider.getName()));
+          .info(String.format("Shutting down data provider for source cluster %s", provider.getName()));
       try {
         provider.shutdown();
       } catch (Exception e) {
@@ -163,30 +169,34 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
   }
 
   private void handleSourceClusterEvent(ClusterEvent event) {
-    logger.info("Processing event from source cluster " + event.getClusterName());
+    logger.info(String
+        .format("Processing event %s from source cluster %s.", event.getEventType().name(),
+            event.getClusterName()));
     switch (event.getEventType()) {
     case LiveInstanceChange:
     case InstanceConfigChange:
     case ExternalViewChange:
-      _refreshViewCluster = true;
+      _refreshViewCluster.set(true);
       break;
     case ViewClusterPeriodicRefresh:
-      if (!_refreshViewCluster) {
+      if (!_refreshViewCluster.get()) {
         logger.info("Skip refresh: No event happened since last refresh, and no force refresh.");
         return;
       }
       // mark source cluster as changed to trigger next refresh as we failed to refresh at
       // least some of the elements in view cluster
       logger.info("Refreshing cluster based on event " + event.getEventType().name());
-      _refreshViewCluster = refreshViewCluster();
+      refreshViewCluster();
       break;
     default:
       logger.error(String.format("Unrecognized event type: %s", event.getEventType()));
     }
   }
 
-  private synchronized void handleViewClusterConfigChange(ClusterEvent event) {
-    logger.info("Processing view cluster event " + event.getEventType().name());
+  private void handleViewClusterConfigChange(ClusterEvent event) {
+    logger.info(String
+        .format("Processing event %s for view cluster %s", event.getEventType().name(),
+            _viewClusterName));
     switch (event.getEventType()) {
     case ClusterConfigChange:
       // TODO: when clusterEventProcessor supports delayed scheduling,
@@ -254,7 +264,13 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
       if (_dataProviderMap.containsKey(key)) {
         try {
           _dataProviderMap.get(key).shutdown();
-          _dataProviderMap.remove(key);
+          synchronized (_dataProviderMap) {
+            _dataProviderMap.remove(key);
+            // upon successful removal of data provider, set refresh view cluster to true
+            // or if no event from source cluster happened before next refresh cycle, this
+            // removal will be missed.
+            _refreshViewCluster.set(true);
+          }
         } catch (Exception e) {
           shouldRetry = true;
           logger.warn(String.format("Failed to shutdown data provider %s, will retry", key));
@@ -281,6 +297,7 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
       }
     }
 
+
     if (action.shouldResetTimer()) {
       logger.info(
           "Resetting view cluster refresh timer at interval " + action.getCurrentRefreshPeriodMs());
@@ -291,11 +308,55 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
 
   /**
    * Use ViewClusterRefresher to refresh ViewCluster.
-   * @return true if needs retry, else false
    */
-  private synchronized boolean refreshViewCluster() {
-    // TODO: Implement refresh logic
-    return false;
+  private void refreshViewCluster() {
+    long startRefreshMs = System.currentTimeMillis();
+    logger.info(String.format("START RefreshViewCluster: Refresh view cluster %s at timestamp %s",
+        _viewClusterName, startRefreshMs));
+
+    // Generate a view of providers so refresh won't block cluster config update
+    // When a data provider is shutdown while we are reloading cache / generating diff,
+    // Exception will be thrown out and we retry during next refresh cycle
+    Set<SourceClusterDataProvider> providerView;
+    synchronized (_dataProviderMap) {
+      _refreshViewCluster.set(false);
+      providerView = new HashSet<>(_dataProviderMap.values());
+    }
+
+    // Refresh data providers
+    // TODO: the following steps can be parallelized
+    for (SourceClusterDataProvider provider : providerView) {
+      try {
+        provider.refreshCache();
+      } catch (Exception e) {
+        logger.warn(String.format(
+            "END RefreshViewCluster: Failed to refresh data provider %s (%s) for view cluster %s. Time spent: %s ms",
+            provider.getName(), provider.hashCode(), _viewClusterName,
+            System.currentTimeMillis() - startRefreshMs), e);
+        _refreshViewCluster.set(true);
+        return;
+      }
+    }
+
+    // Refresh properties in view cluster
+    _viewClusterRefresher.updateProviderView(providerView);
+    for (PropertyType propertyType : ViewClusterSourceConfig.getValidPropertyTypes()) {
+      logger.info(String
+          .format("Refreshing property %s in view cluster %s", propertyType, _viewClusterName));
+      try {
+        if (!_viewClusterRefresher.refreshPropertiesInViewCluster(propertyType)) {
+          _refreshViewCluster.set(true);
+        }
+      } catch (IllegalArgumentException e) {
+        // Invalid property... not expected! Something wrong with code, should not retry
+        logger.error(String.format("Failed to refresh property in view cluster %s with exception",
+            _viewClusterName), e);
+      }
+    }
+
+    logger.info(String
+        .format("END RefreshViewCluster: finished refresh view cluster %s. Time spent: %s ms.",
+            _viewClusterName, System.currentTimeMillis() - startRefreshMs));
   }
 
   private static String generateHelixManagerInstanceName(String viewClusterName) {

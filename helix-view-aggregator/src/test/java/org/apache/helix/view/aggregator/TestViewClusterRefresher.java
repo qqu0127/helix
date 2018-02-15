@@ -95,7 +95,8 @@ public class TestViewClusterRefresher {
     createMockDataProviders(dataProviderMap);
 
     ViewClusterRefresher refresher =
-        new ViewClusterRefresher(viewClusterName, viewClusterDataAccessor, dataProviderMap);
+        new ViewClusterRefresher(viewClusterName, viewClusterDataAccessor);
+    refresher.updateProviderView(new HashSet<>(dataProviderMap.values()));
 
     // Refresh an empty view cluster
     Assert.assertTrue(refresher.refreshPropertiesInViewCluster(PropertyType.LIVEINSTANCES));
@@ -118,7 +119,8 @@ public class TestViewClusterRefresher {
     createMockDataProviders(dataProviderMap);
 
     ViewClusterRefresher refresher =
-        new ViewClusterRefresher(viewClusterName, viewClusterDataAccessor, dataProviderMap);
+        new ViewClusterRefresher(viewClusterName, viewClusterDataAccessor);
+    refresher.updateProviderView(new HashSet<>(dataProviderMap.values()));
     MockSourceClusterDataProvider sampleProvider =
         (MockSourceClusterDataProvider) dataProviderMap.get("cluster0");
 
@@ -161,7 +163,8 @@ public class TestViewClusterRefresher {
     createMockDataProviders(dataProviderMap);
 
     ViewClusterRefresher refresher =
-        new ViewClusterRefresher(viewClusterName, accessor, dataProviderMap);
+        new ViewClusterRefresher(viewClusterName, accessor);
+    refresher.updateProviderView(new HashSet<>(dataProviderMap.values()));
     MockSourceClusterDataProvider sampleProvider =
         (MockSourceClusterDataProvider) dataProviderMap.get("cluster0");
 
@@ -202,7 +205,8 @@ public class TestViewClusterRefresher {
     createMockDataProviders(dataProviderMap);
 
     ViewClusterRefresher refresher =
-        new ViewClusterRefresher(viewClusterName, viewClusterDataAccessor, dataProviderMap);
+        new ViewClusterRefresher(viewClusterName, viewClusterDataAccessor);
+    refresher.updateProviderView(new HashSet<>(dataProviderMap.values()));
     MockSourceClusterDataProvider sampleProvider =
         (MockSourceClusterDataProvider) dataProviderMap.get("cluster0");
 

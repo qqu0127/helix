@@ -92,6 +92,10 @@ public class ViewClusterSourceConfig {
     return _properties;
   }
 
+  public static List<PropertyType> getValidPropertyTypes() {
+    return _validPropertyTypes;
+  }
+
   public String toJson() throws IOException {
     return new ObjectMapper().writeValueAsString(this);
   }
