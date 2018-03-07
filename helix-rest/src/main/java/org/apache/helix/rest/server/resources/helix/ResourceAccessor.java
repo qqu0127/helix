@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -41,6 +42,7 @@ import org.apache.helix.manager.zk.ZkClient;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.ResourceConfig;
+import org.apache.helix.model.StateModelDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.codehaus.jackson.node.ArrayNode;
@@ -70,6 +72,14 @@ public class ResourceAccessor extends AbstractHelixResource {
 
     List<String> idealStates = zkClient.getChildren(PropertyPathBuilder.idealState(clusterId));
     List<String> externalViews = zkClient.getChildren(PropertyPathBuilder.externalView(clusterId));
+    // Above is the list of resources, not partition
+    // So using these two lists of resources in IS and EV, you can add a simple check (all resources must be present in both, if not, unhealthy)
+
+//    HelixAdmin helixAdmin = getHelixAdmin();
+//    helixAdmin.getResourceExternalView(externalViews);
+//    helixAdmin.getStateModelDef(clusterId, "asdlkfj")
+//    IdealState i = helixAdmin.getResourceIdealState().get
+//
 
     if (idealStates != null) {
       idealStatesNode.addAll((ArrayNode) OBJECT_MAPPER.valueToTree(idealStates));
@@ -83,6 +93,106 @@ public class ResourceAccessor extends AbstractHelixResource {
 
     return JSONRepresentation(root);
   }
+
+  // Returns health profile of ALL resources
+  @GET
+  @Path("resources/health")
+  public Response getResourceHealth(@PathParam("clusterId") String clusterId) throws IOException {
+
+
+    return notFound();
+  }
+
+  // Returns health profile of ALL partitions for the corresponding resource
+  @GET
+  @Path("{resourceName}/health")
+  public Response getPartitionHealth(@PathParam("clusterId") String clusterId,
+      @PathParam("resourceName") String resourceName) throws IOException {
+
+    ObjectNode root = JsonNodeFactory.instance.objectNode();
+    root.put(Properties.id.name(), JsonNodeFactory.instance.textNode(clusterId));
+
+    ZkClient zkClient = getZkClient();
+
+    ArrayNode idealStatesNode = root.putArray(ResourceProperties.idealStates.name());
+    ArrayNode externalViewsNode = root.putArray(ResourceProperties.externalViews.name());
+
+    List<String> idealStates = zkClient.getChildren(PropertyPathBuilder.idealState(clusterId));
+    List<String> externalViews = zkClient.getChildren(PropertyPathBuilder.externalView(clusterId));
+
+    // Get IdealState and ExternalView instances through HelixAdmin
+    HelixAdmin admin = getHelixAdmin();
+    IdealState idealState = admin.getResourceIdealState(clusterId, resourceName);
+    ExternalView externalView = admin.getResourceExternalView(clusterId, resourceName);
+
+    // Get the StateModelDef for this resource
+    StateModelDefinition stateModelDef = admin.getStateModelDef(clusterId, idealState.getStateModelDefRef());
+
+    // Get the list of possible States for this StateModel to get the top state and other states
+    List<String> stateList = stateModelDef.getStatesPriorityList();
+
+    // Get the number of minimum active replicas
+    int minActiveReplicas = idealState.getMinActiveReplicas();
+
+    // Get the list of all partitions
+    Set<String> allPartitionNames = idealState.getPartitionSet();
+
+    // Start the logic
+
+    // Create a map to store the health status of each partition in
+    Map<String, String> partitionHealth = new HashMap<>();
+
+    for (String partitionName : allPartitionNames) {
+
+
+    }
+
+
+
+
+    return notFound();
+  }
+
+//  @GET
+//  @Path("{resourceName}")
+//  public Response getResourceHealth(@PathParam("clusterId") String clusterId,
+//      @PathParam("resourceName") String resourceName) throws IOException {
+//
+//    ObjectNode root = JsonNodeFactory.instance.objectNode();
+//    root.put(Properties.id.name(), JsonNodeFactory.instance.textNode(clusterId));
+//
+//    ZkClient zkClient = getZkClient();
+//
+//    ArrayNode idealStatesNode = root.putArray(ResourceProperties.idealStates.name());
+//    ArrayNode externalViewsNode = root.putArray(ResourceProperties.externalViews.name());
+//
+//    List<String> idealStates = zkClient.getChildren(PropertyPathBuilder.idealState(clusterId));
+//    List<String> externalViews = zkClient.getChildren(PropertyPathBuilder.externalView(clusterId));
+//
+//
+//
+//
+//    return notFound();
+//  }
+//
+//  @GET
+//  @Path("{resourceName}")
+//  public Response getPartitionHealth(@PathParam("clusterId") String clusterId,
+//      @PathParam("resourceName") String resourceName) throws IOException {
+//
+//    ObjectNode root = JsonNodeFactory.instance.objectNode();
+//    root.put(Properties.id.name(), JsonNodeFactory.instance.textNode(clusterId));
+//
+//    ZkClient zkClient = getZkClient();
+//
+//    ArrayNode idealStatesNode = root.putArray(ResourceProperties.idealStates.name());
+//    ArrayNode externalViewsNode = root.putArray(ResourceProperties.externalViews.name());
+//
+//
+//    return notFound();
+//  }
+
+
 
   @GET
   @Path("{resourceName}")
