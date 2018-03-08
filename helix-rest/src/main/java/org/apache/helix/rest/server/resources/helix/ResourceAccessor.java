@@ -99,12 +99,11 @@ public class ResourceAccessor extends AbstractHelixResource {
    * Returns health profile of all resources
    *
    * @param clusterId
-   * @return
-   * @throws IOException
+   * @return JSON result
    */
   @GET
   @Path("resources/health")
-  public Response getResourceHealth(@PathParam("clusterId") String clusterId) throws IOException {
+  public Response getResourceHealth(@PathParam("clusterId") String clusterId) {
 
     ZkClient zkClient = getZkClient();
 
@@ -145,7 +144,7 @@ public class ResourceAccessor extends AbstractHelixResource {
    *
    * @param clusterId
    * @param resourceName
-   * @return
+   * @return JSON result
    * @throws IOException
    */
   @GET
@@ -154,7 +153,7 @@ public class ResourceAccessor extends AbstractHelixResource {
       @PathParam("resourceName") String resourceName) throws IOException {
 
     ObjectNode root = JsonNodeFactory.instance.objectNode();
-    root.put(Properties.id.name(), JsonNodeFactory.instance.textNode(clusterId)); // TODO: is this the resource id?
+    root.put(Properties.id.name(), JsonNodeFactory.instance.textNode(clusterId));
 
     Map<String, String> partitionHealthResult = computePartitionHealth(clusterId, resourceName);
 
@@ -426,12 +425,8 @@ public class ResourceAccessor extends AbstractHelixResource {
           // Top state counts must match, if not, unhealthy
           if (statePriorityIndex == 0 && currentStateCountInExternalView != currentStateCountInIdealState) {
             status = HealthStatus.unhealthy;
-            break;
-          }
-
-          // Must check for each remaining iterations of the loop
-          if (currentStateCountInExternalView < currentStateCountInIdealState) {
-            // Count in ExternalView is less than count in IdealState, so downgrade to partially healthy
+          } else if (currentStateCountInExternalView < currentStateCountInIdealState) {
+            // For non-top states, if count in ExternalView is less than count in IdealState, partially healthy
             status = HealthStatus.partialHealthy;
           }
         }
