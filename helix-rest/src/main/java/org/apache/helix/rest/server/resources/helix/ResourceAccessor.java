@@ -64,9 +64,9 @@ public class ResourceAccessor extends AbstractHelixResource {
 
   // TODO: Enum should be in all caps?
   public enum HealthStatus {
-    healthy,
-    partialHealthy,
-    unhealthy
+    HEALTHY,
+    PARTIAL_HEALTHY,
+    UNHEALTHY
   }
 
   @GET
@@ -117,22 +117,19 @@ public class ResourceAccessor extends AbstractHelixResource {
       if(resourcesInExternalView.contains(resourceName)) {
         Map<String, String> partitionHealth = computePartitionHealth(clusterId, resourceName);
 
-        if (partitionHealth.isEmpty()) {
-          // No partitions for a resource, unhealthy
-          resourceHealthResult.put(resourceName, HealthStatus.unhealthy.name());
-        } else if (partitionHealth.values().contains(HealthStatus.unhealthy.name())) {
-          // There exists one or more unhealthy partitions in this resource, resource is unhealthy
-          resourceHealthResult.put(resourceName, HealthStatus.unhealthy.name());
-        } else if (partitionHealth.values().contains(HealthStatus.partialHealthy.name())) {
-          // No unhealthy partition, but one or more partially healthy partitions, resource is partially healthy
-          resourceHealthResult.put(resourceName, HealthStatus.partialHealthy.name());
+        if (partitionHealth.isEmpty() || partitionHealth.values().contains(HealthStatus.UNHEALTHY.name())) {
+          // No partitions for a resource or there exists one or more UNHEALTHY partitions in this resource, UNHEALTHY
+          resourceHealthResult.put(resourceName, HealthStatus.UNHEALTHY.name());
+        } else if (partitionHealth.values().contains(HealthStatus.PARTIAL_HEALTHY.name())) {
+          // No UNHEALTHY partition, but one or more partially healthy partitions, resource is partially healthy
+          resourceHealthResult.put(resourceName, HealthStatus.PARTIAL_HEALTHY.name());
         } else {
-          // No unhealthy or partially healthy partitions and non-empty, resource is healthy
-          resourceHealthResult.put(resourceName, HealthStatus.healthy.name());
+          // No UNHEALTHY or partially healthy partitions and non-empty, resource is healthy
+          resourceHealthResult.put(resourceName, HealthStatus.HEALTHY.name());
         }
       } else {
-        // If a resource is not in ExternalView, then it is unhealthy
-        resourceHealthResult.put(resourceName, HealthStatus.unhealthy.name());
+        // If a resource is not in ExternalView, then it is UNHEALTHY
+        resourceHealthResult.put(resourceName, HealthStatus.UNHEALTHY.name());
       }
     }
 
@@ -409,7 +406,7 @@ public class ResourceAccessor extends AbstractHelixResource {
 
         // Initialize HealthStatus and numActiveReplicasInExternalView
         int numActiveReplicasInExternalView = 0;
-        HealthStatus status = HealthStatus.healthy;
+        HealthStatus status = HealthStatus.HEALTHY;
 
         // Go through all states that are "active" states (higher priority than InitialState)
         for (int statePriorityIndex = 0; statePriorityIndex < stateList.size(); statePriorityIndex++) {
@@ -422,18 +419,18 @@ public class ResourceAccessor extends AbstractHelixResource {
           // Update numActiveReplicasInExternalView
           numActiveReplicasInExternalView += currentStateCountInExternalView;
 
-          // Top state counts must match, if not, unhealthy
+          // Top state counts must match, if not, UNHEALTHY
           if (statePriorityIndex == 0 && currentStateCountInExternalView != currentStateCountInIdealState) {
-            status = HealthStatus.unhealthy;
+            status = HealthStatus.UNHEALTHY;
           } else if (currentStateCountInExternalView < currentStateCountInIdealState) {
             // For non-top states, if count in ExternalView is less than count in IdealState, partially healthy
-            status = HealthStatus.partialHealthy;
+            status = HealthStatus.PARTIAL_HEALTHY;
           }
         }
 
         if (numActiveReplicasInExternalView < minActiveReplicas) {
-          // If this partition does not satisfy the number of minimum active replicas, unhealthy
-          status = HealthStatus.unhealthy;
+          // If this partition does not satisfy the number of minimum active replicas, UNHEALTHY
+          status = HealthStatus.UNHEALTHY;
         }
 
         partitionHealthResult.put(partitionName, status.name());
