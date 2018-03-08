@@ -20,6 +20,8 @@ package org.apache.helix.rest.server.resources.helix;
  */
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +42,7 @@ import org.apache.helix.PropertyPathBuilder;
 import org.apache.helix.ZNRecord;
 import org.apache.helix.manager.zk.ZkClient;
 import org.apache.helix.model.ExternalView;
+import org.apache.helix.model.HealthStat;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.ResourceConfig;
 import org.apache.helix.model.StateModelDefinition;
@@ -60,6 +63,13 @@ public class ResourceAccessor extends AbstractHelixResource {
     resourceConfig,
   }
 
+  // TODO: Enum should be in all caps?
+  public enum HealthStatus {
+    healthy,
+    partialHealthy,
+    unhealthy
+  }
+
   @GET
   public Response getResources(@PathParam("clusterId") String clusterId) {
     ObjectNode root = JsonNodeFactory.instance.objectNode();
@@ -72,14 +82,6 @@ public class ResourceAccessor extends AbstractHelixResource {
 
     List<String> idealStates = zkClient.getChildren(PropertyPathBuilder.idealState(clusterId));
     List<String> externalViews = zkClient.getChildren(PropertyPathBuilder.externalView(clusterId));
-    // Above is the list of resources, not partition
-    // So using these two lists of resources in IS and EV, you can add a simple check (all resources must be present in both, if not, unhealthy)
-
-//    HelixAdmin helixAdmin = getHelixAdmin();
-//    helixAdmin.getResourceExternalView(externalViews);
-//    helixAdmin.getStateModelDef(clusterId, "asdlkfj")
-//    IdealState i = helixAdmin.getResourceIdealState().get
-//
 
     if (idealStates != null) {
       idealStatesNode.addAll((ArrayNode) OBJECT_MAPPER.valueToTree(idealStates));
@@ -94,105 +96,75 @@ public class ResourceAccessor extends AbstractHelixResource {
     return JSONRepresentation(root);
   }
 
-  // Returns health profile of ALL resources
+  /**
+   * Returns health profile of all resources
+   *
+   * @param clusterId
+   * @return
+   * @throws IOException
+   */
   @GET
   @Path("resources/health")
   public Response getResourceHealth(@PathParam("clusterId") String clusterId) throws IOException {
 
+    ZkClient zkClient = getZkClient();
 
-    return notFound();
+    List<String> resourcesInIdealState = zkClient.getChildren(PropertyPathBuilder.idealState(clusterId));
+    List<String> resourcesInExternalView = zkClient.getChildren(PropertyPathBuilder.externalView(clusterId));
+
+    Map<String, String> resourceHealthResult = new HashMap<>();
+
+    for (String resourceName : resourcesInIdealState) {
+
+      if(resourcesInExternalView.contains(resourceName)) {
+        Map<String, String> partitionHealth = computePartitionHealth(clusterId, resourceName);
+
+        if (partitionHealth.isEmpty()) {
+          // No partitions for a resource, unhealthy
+          resourceHealthResult.put(resourceName, HealthStatus.unhealthy.name());
+        } else if (partitionHealth.values().contains(HealthStatus.unhealthy.name())) {
+          // There exists one or more unhealthy partitions in this resource, resource is unhealthy
+          resourceHealthResult.put(resourceName, HealthStatus.unhealthy.name());
+        } else if (partitionHealth.values().contains(HealthStatus.partialHealthy.name())) {
+          // No unhealthy partition, but one or more partially healthy partitions, resource is partially healthy
+          resourceHealthResult.put(resourceName, HealthStatus.partialHealthy.name());
+        } else {
+          // No unhealthy or partially healthy partitions and non-empty, resource is healthy
+          resourceHealthResult.put(resourceName, HealthStatus.healthy.name());
+        }
+      } else {
+        // If a resource is not in ExternalView, then it is unhealthy
+        resourceHealthResult.put(resourceName, HealthStatus.unhealthy.name());
+      }
+    }
+
+    return JSONRepresentation(resourceHealthResult);
   }
 
-  // Returns health profile of ALL partitions for the corresponding resource
+  /**
+   * Returns health profile of all partitions for the corresponding resource
+   *
+   * @param clusterId
+   * @param resourceName
+   * @return
+   * @throws IOException
+   */
   @GET
   @Path("{resourceName}/health")
   public Response getPartitionHealth(@PathParam("clusterId") String clusterId,
       @PathParam("resourceName") String resourceName) throws IOException {
 
     ObjectNode root = JsonNodeFactory.instance.objectNode();
-    root.put(Properties.id.name(), JsonNodeFactory.instance.textNode(clusterId));
+    root.put(Properties.id.name(), JsonNodeFactory.instance.textNode(clusterId)); // TODO: is this the resource id?
 
-    ZkClient zkClient = getZkClient();
+    Map<String, String> partitionHealthResult = computePartitionHealth(clusterId, resourceName);
 
-    ArrayNode idealStatesNode = root.putArray(ResourceProperties.idealStates.name());
-    ArrayNode externalViewsNode = root.putArray(ResourceProperties.externalViews.name());
+    // TODO: is this the best way to do it?
+    root.put("resourceName", resourceName);
+    root.put("partitionHealthStatus", OBJECT_MAPPER.writeValueAsString(partitionHealthResult));
 
-    List<String> idealStates = zkClient.getChildren(PropertyPathBuilder.idealState(clusterId));
-    List<String> externalViews = zkClient.getChildren(PropertyPathBuilder.externalView(clusterId));
-
-    // Get IdealState and ExternalView instances through HelixAdmin
-    HelixAdmin admin = getHelixAdmin();
-    IdealState idealState = admin.getResourceIdealState(clusterId, resourceName);
-    ExternalView externalView = admin.getResourceExternalView(clusterId, resourceName);
-
-    // Get the StateModelDef for this resource
-    StateModelDefinition stateModelDef = admin.getStateModelDef(clusterId, idealState.getStateModelDefRef());
-
-    // Get the list of possible States for this StateModel to get the top state and other states
-    List<String> stateList = stateModelDef.getStatesPriorityList();
-
-    // Get the number of minimum active replicas
-    int minActiveReplicas = idealState.getMinActiveReplicas();
-
-    // Get the list of all partitions
-    Set<String> allPartitionNames = idealState.getPartitionSet();
-
-    // Start the logic
-
-    // Create a map to store the health status of each partition in
-    Map<String, String> partitionHealth = new HashMap<>();
-
-    for (String partitionName : allPartitionNames) {
-
-
-    }
-
-
-
-
-    return notFound();
+    return JSONRepresentation(root);
   }
-
-//  @GET
-//  @Path("{resourceName}")
-//  public Response getResourceHealth(@PathParam("clusterId") String clusterId,
-//      @PathParam("resourceName") String resourceName) throws IOException {
-//
-//    ObjectNode root = JsonNodeFactory.instance.objectNode();
-//    root.put(Properties.id.name(), JsonNodeFactory.instance.textNode(clusterId));
-//
-//    ZkClient zkClient = getZkClient();
-//
-//    ArrayNode idealStatesNode = root.putArray(ResourceProperties.idealStates.name());
-//    ArrayNode externalViewsNode = root.putArray(ResourceProperties.externalViews.name());
-//
-//    List<String> idealStates = zkClient.getChildren(PropertyPathBuilder.idealState(clusterId));
-//    List<String> externalViews = zkClient.getChildren(PropertyPathBuilder.externalView(clusterId));
-//
-//
-//
-//
-//    return notFound();
-//  }
-//
-//  @GET
-//  @Path("{resourceName}")
-//  public Response getPartitionHealth(@PathParam("clusterId") String clusterId,
-//      @PathParam("resourceName") String resourceName) throws IOException {
-//
-//    ObjectNode root = JsonNodeFactory.instance.objectNode();
-//    root.put(Properties.id.name(), JsonNodeFactory.instance.textNode(clusterId));
-//
-//    ZkClient zkClient = getZkClient();
-//
-//    ArrayNode idealStatesNode = root.putArray(ResourceProperties.idealStates.name());
-//    ArrayNode externalViewsNode = root.putArray(ResourceProperties.externalViews.name());
-//
-//
-//    return notFound();
-//  }
-
-
 
   @GET
   @Path("{resourceName}")
@@ -385,4 +357,95 @@ public class ResourceAccessor extends AbstractHelixResource {
     return notFound();
   }
 
+  private Map<String, String> computePartitionHealth(String clusterId, String resourceName) {
+    // Get IdealState and ExternalView instances through HelixAdmin
+    HelixAdmin admin;
+    try {
+      admin = getHelixAdmin();
+    } catch (Exception e) {
+      _logger.error("Error in retrieving HelixAdmin in resource: " + resourceName, e);
+      //return serverError(e);
+      return Collections.EMPTY_MAP;
+    }
+
+    // idealState and externalView are guaranteed to be non-null (HelixAdmin methods do not return null)
+    IdealState idealState = admin.getResourceIdealState(clusterId, resourceName);
+    ExternalView externalView = admin.getResourceExternalView(clusterId, resourceName);
+
+    // Get the StateModelDef and initialState for this resource
+    StateModelDefinition stateModelDef;
+    try {
+      stateModelDef = admin.getStateModelDef(clusterId, idealState.getStateModelDefRef());
+    } catch (Exception e) {
+      _logger.error("Error in retrieving StateModelDefinition in resource: " + resourceName, e);
+      //return serverError(e);
+      return Collections.EMPTY_MAP;
+    }
+    String initialState = stateModelDef.getInitialState();
+
+    // Get the list of possible States for this StateModel to get the top state and other states
+    List<String> stateList = stateModelDef.getStatesPriorityList();
+
+    // Trim stateList to initialState and above
+    stateList = stateList.subList(0, stateList.indexOf(initialState));
+
+    // Get the number of minimum active replicas
+    int minActiveReplicas = idealState.getMinActiveReplicas();
+
+    // Start the logic that determines the health status of each partition
+    Map<String, String> partitionHealthResult = new HashMap<>();
+
+    // Get the list of all partitions
+    Set<String> allPartitionNames = idealState.getPartitionSet();
+    if (!allPartitionNames.isEmpty()) {
+      for (String partitionName : allPartitionNames) {
+
+        // Extract all states into Collections from both IdealState and ExternalView
+        Map<String, String> instanceStateMapInIdealState = idealState.getInstanceStateMap(partitionName);
+        Collection<String> allReplicaStatesInIdealState = (instanceStateMapInIdealState != null) ?
+            instanceStateMapInIdealState.values() : Collections.EMPTY_LIST;
+
+        Map<String, String> stateMapInExternalView = externalView.getStateMap(partitionName);
+        Collection<String> allReplicaStatesInExternalView = (stateMapInExternalView != null) ?
+            stateMapInExternalView.values() : Collections.EMPTY_LIST;
+
+        // Initialize HealthStatus and numActiveReplicasInExternalView
+        int numActiveReplicasInExternalView = 0;
+        HealthStatus status = HealthStatus.healthy;
+
+        // Go through all states that are "active" states (higher priority than InitialState)
+        for (int statePriorityIndex = 0; statePriorityIndex < stateList.size(); statePriorityIndex++) {
+
+          // Get counts for the state in both IdealState and ExternalView
+          String currentState = stateList.get(statePriorityIndex);
+          int currentStateCountInIdealState = Collections.frequency(allReplicaStatesInIdealState, currentState);
+          int currentStateCountInExternalView = Collections.frequency(allReplicaStatesInExternalView, currentState);
+
+          // Update numActiveReplicasInExternalView
+          numActiveReplicasInExternalView += currentStateCountInExternalView;
+
+          // Top state counts must match, if not, unhealthy
+          if (statePriorityIndex == 0 && currentStateCountInExternalView != currentStateCountInIdealState) {
+            status = HealthStatus.unhealthy;
+            break;
+          }
+
+          // Must check for each remaining iterations of the loop
+          if (currentStateCountInExternalView < currentStateCountInIdealState) {
+            // Count in ExternalView is less than count in IdealState, so downgrade to partially healthy
+            status = HealthStatus.partialHealthy;
+          }
+        }
+
+        if (numActiveReplicasInExternalView < minActiveReplicas) {
+          // If this partition does not satisfy the number of minimum active replicas, unhealthy
+          status = HealthStatus.unhealthy;
+        }
+
+        partitionHealthResult.put(partitionName, status.name());
+      }
+    }
+
+    return partitionHealthResult;
+  }
 }
