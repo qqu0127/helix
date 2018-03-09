@@ -20,10 +20,10 @@ package org.apache.helix.rest.server.resources.helix;
  */
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,20 +38,14 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import org.apache.helix.ConfigAccessor;
 import org.apache.helix.HelixAdmin;
-import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixException;
-import org.apache.helix.PropertyKey;
 import org.apache.helix.PropertyPathBuilder;
 import org.apache.helix.ZNRecord;
-import org.apache.helix.controller.rebalancer.strategy.RebalanceStrategy;
 import org.apache.helix.manager.zk.ZkClient;
-import org.apache.helix.model.ClusterConfig;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
-import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.ResourceConfig;
 import org.apache.helix.model.StateModelDefinition;
-import org.apache.helix.util.HelixUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.codehaus.jackson.node.ArrayNode;
@@ -360,79 +354,51 @@ public class ResourceAccessor extends AbstractHelixResource {
   }
 
   private Map<String, String> computePartitionHealth(String clusterId, String resourceName) {
-    // Get IdealState and ExternalView instances through HelixAdmin
     HelixAdmin admin;
     try {
       admin = getHelixAdmin();
     } catch (Exception e) {
       _logger.error("Error in retrieving HelixAdmin in resource: " + resourceName, e);
-      //return serverError(e);
-      return Collections.EMPTY_MAP;
+      return Collections.emptyMap();
     }
-
-    // idealState and externalView are guaranteed to be non-null (HelixAdmin methods do not return null)
     IdealState idealState = admin.getResourceIdealState(clusterId, resourceName);
     ExternalView externalView = admin.getResourceExternalView(clusterId, resourceName);
-
-    // Get the StateModelDef and initialState for this resource
     StateModelDefinition stateModelDef;
     try {
       stateModelDef = admin.getStateModelDef(clusterId, idealState.getStateModelDefRef());
     } catch (Exception e) {
       _logger.error("Error in retrieving StateModelDefinition in resource: " + resourceName, e);
       //return serverError(e);
-      return Collections.EMPTY_MAP;
+      return Collections.emptyMap();
     }
     String initialState = stateModelDef.getInitialState();
-
-    // Get the list of possible States for this StateModel to get the top state and other states
     List<String> statesPriorityList = stateModelDef.getStatesPriorityList();
-
-    // Trim stateList to initialState and above
-    statesPriorityList = statesPriorityList.subList(0, statesPriorityList.indexOf(initialState));
-
-    // Get the number of minimum active replicas
+    statesPriorityList = statesPriorityList.subList(0, statesPriorityList.indexOf(initialState)); // Trim stateList to initialState and above
     int minActiveReplicas = idealState.getMinActiveReplicas();
 
     // Start the logic that determines the health status of each partition
     Map<String, String> partitionHealthResult = new HashMap<>();
-
-    // Get the list of all partitions
     Set<String> allPartitionNames = idealState.getPartitionSet();
-
-    // Compute idealStateMapping
-    Map<String, Map<String, String>> idealStateMapping =
-        computeIdealStateMapping(admin, clusterId, idealState, allPartitionNames);
-
     if (!allPartitionNames.isEmpty()) {
       for (String partitionName : allPartitionNames) {
-
-        // Extract all states into Collections from both IdealState and ExternalView
-        Map<String, String> instanceStateMapInIdealState = idealStateMapping.get(partitionName);
-        Collection<String> allReplicaStatesInIdealState =
-            (instanceStateMapInIdealState != null && !instanceStateMapInIdealState.isEmpty()) ?
-            instanceStateMapInIdealState.values() : Collections.EMPTY_LIST;
-
+        int replicaCount = idealState.getReplicaCount(idealState.getPreferenceList(partitionName).size());
+        // Simplify expectedStateCountMap by assuming that all instances are available to reduce computation load on this REST endpoint
+        LinkedHashMap<String, Integer> expectedStateCountMap =
+            stateModelDef.getStateCountMap(replicaCount, replicaCount);
+        // Extract all states into Collections from ExternalView
         Map<String, String> stateMapInExternalView = externalView.getStateMap(partitionName);
         Collection<String> allReplicaStatesInExternalView =
             (stateMapInExternalView != null && !stateMapInExternalView.isEmpty()) ?
             stateMapInExternalView.values() : Collections.EMPTY_LIST;
-
-        // Initialize HealthStatus and numActiveReplicasInExternalView
         int numActiveReplicasInExternalView = 0;
         HealthStatus status = HealthStatus.HEALTHY;
 
         // Go through all states that are "active" states (higher priority than InitialState)
         for (int statePriorityIndex = 0; statePriorityIndex < statesPriorityList.size(); statePriorityIndex++) {
-
-          // Get counts for the state in both IdealState and ExternalView
           String currentState = statesPriorityList.get(statePriorityIndex);
-          int currentStateCountInIdealState = Collections.frequency(allReplicaStatesInIdealState, currentState);
+          int currentStateCountInIdealState = expectedStateCountMap.get(currentState);
           int currentStateCountInExternalView = Collections.frequency(allReplicaStatesInExternalView, currentState);
-
-          // Update numActiveReplicasInExternalView
           numActiveReplicasInExternalView += currentStateCountInExternalView;
-
           // Top state counts must match, if not, UNHEALTHY
           if (statePriorityIndex == 0 && currentStateCountInExternalView != currentStateCountInIdealState) {
             status = HealthStatus.UNHEALTHY;
@@ -441,41 +407,13 @@ public class ResourceAccessor extends AbstractHelixResource {
             status = HealthStatus.PARTIAL_HEALTHY;
           }
         }
-
         if (numActiveReplicasInExternalView < minActiveReplicas) {
           // If this partition does not satisfy the number of minimum active replicas, UNHEALTHY
           status = HealthStatus.UNHEALTHY;
         }
-
         partitionHealthResult.put(partitionName, status.name());
       }
     }
-
     return partitionHealthResult;
-  }
-
-  private Map<String, Map<String, String>> computeIdealStateMapping(HelixAdmin admin, String clusterId,
-      IdealState idealState, Collection<String> allPartitionNames) {
-    ConfigAccessor configAccessor = getConfigAccessor();
-    ClusterConfig clusterConfig = configAccessor.getClusterConfig(clusterId);
-    List<InstanceConfig> instanceConfigs = new ArrayList<>();
-    for (String instance : admin.getInstancesInCluster(clusterId)) {
-      instanceConfigs.add(configAccessor.getInstanceConfig(clusterId, instance));
-    }
-    HelixDataAccessor helixDataAccessor = getDataAccssor(clusterId);
-    List<String> liveInstances = helixDataAccessor
-        .getChildNames(new PropertyKey.Builder(clusterId).liveInstances());
-
-    Map<String, Map<String, String>> idealStateMapping;
-    try {
-      // TODO: Verify that DEFAULT_REBALANCE_STRATEGY is okay
-      idealStateMapping = HelixUtil.getIdealAssignmentForFullAuto(clusterConfig, instanceConfigs, liveInstances,
-          idealState, new ArrayList<>(allPartitionNames), RebalanceStrategy.DEFAULT_REBALANCE_STRATEGY);
-    } catch (Exception e) {
-      _logger.error("Failed to calculate the ideal state mapping, Exception: " + e);
-      return Collections.EMPTY_MAP;
-    }
-
-    return idealStateMapping;
   }
 }
