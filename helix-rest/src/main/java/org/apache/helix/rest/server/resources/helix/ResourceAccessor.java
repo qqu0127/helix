@@ -368,7 +368,6 @@ public class ResourceAccessor extends AbstractHelixResource {
       stateModelDef = admin.getStateModelDef(clusterId, idealState.getStateModelDefRef());
     } catch (Exception e) {
       _logger.error("Error in retrieving StateModelDefinition in resource: " + resourceName, e);
-      //return serverError(e);
       return Collections.emptyMap();
     }
     String initialState = stateModelDef.getInitialState();
