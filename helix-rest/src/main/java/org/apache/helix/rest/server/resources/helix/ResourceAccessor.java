@@ -97,7 +97,7 @@ public class ResourceAccessor extends AbstractHelixResource {
   }
 
   /**
-   * Returns health profile of all resources
+   * Returns health profile of all resources in the cluster
    *
    * @param clusterId
    * @return JSON result
@@ -138,7 +138,7 @@ public class ResourceAccessor extends AbstractHelixResource {
   }
 
   /**
-   * Returns health profile of all partitions for the corresponding resource
+   * Returns health profile of all partitions for the corresponding resource in the cluster
    *
    * @param clusterId
    * @param resourceName
@@ -155,7 +155,6 @@ public class ResourceAccessor extends AbstractHelixResource {
 
     Map<String, String> partitionHealthResult = computePartitionHealth(clusterId, resourceName);
 
-    // TODO: is this the best way to do it?
     root.put("resourceName", resourceName);
     root.put("partitionHealthStatus", OBJECT_MAPPER.writeValueAsString(partitionHealthResult));
 
@@ -165,7 +164,7 @@ public class ResourceAccessor extends AbstractHelixResource {
   @GET
   @Path("{resourceName}")
   public Response getResource(@PathParam("clusterId") String clusterId,
-      @PathParam("resourceName") String resourceName) throws IOException {
+      @PathParam("resourceName") String resourceName) {
     ConfigAccessor accessor = getConfigAccessor();
     HelixAdmin admin = getHelixAdmin();
 
@@ -354,22 +353,10 @@ public class ResourceAccessor extends AbstractHelixResource {
   }
 
   private Map<String, String> computePartitionHealth(String clusterId, String resourceName) {
-    HelixAdmin admin;
-    try {
-      admin = getHelixAdmin();
-    } catch (Exception e) {
-      _logger.error("Error in retrieving HelixAdmin in resource: " + resourceName, e);
-      return Collections.emptyMap();
-    }
+    HelixAdmin admin = getHelixAdmin();
     IdealState idealState = admin.getResourceIdealState(clusterId, resourceName);
     ExternalView externalView = admin.getResourceExternalView(clusterId, resourceName);
-    StateModelDefinition stateModelDef;
-    try {
-      stateModelDef = admin.getStateModelDef(clusterId, idealState.getStateModelDefRef());
-    } catch (Exception e) {
-      _logger.error("Error in retrieving StateModelDefinition in resource: " + resourceName, e);
-      return Collections.emptyMap();
-    }
+    StateModelDefinition stateModelDef = admin.getStateModelDef(clusterId, idealState.getStateModelDefRef());
     String initialState = stateModelDef.getInitialState();
     List<String> statesPriorityList = stateModelDef.getStatesPriorityList();
     statesPriorityList = statesPriorityList.subList(0, statesPriorityList.indexOf(initialState)); // Trim stateList to initialState and above
@@ -398,16 +385,17 @@ public class ResourceAccessor extends AbstractHelixResource {
           int currentStateCountInIdealState = expectedStateCountMap.get(currentState);
           int currentStateCountInExternalView = Collections.frequency(allReplicaStatesInExternalView, currentState);
           numActiveReplicasInExternalView += currentStateCountInExternalView;
-          // Top state counts must match, if not, UNHEALTHY
+          // Top state counts must match, if not, unhealthy
           if (statePriorityIndex == 0 && currentStateCountInExternalView != currentStateCountInIdealState) {
             status = HealthStatus.UNHEALTHY;
+            break;
           } else if (currentStateCountInExternalView < currentStateCountInIdealState) {
             // For non-top states, if count in ExternalView is less than count in IdealState, partially healthy
             status = HealthStatus.PARTIAL_HEALTHY;
           }
         }
         if (numActiveReplicasInExternalView < minActiveReplicas) {
-          // If this partition does not satisfy the number of minimum active replicas, UNHEALTHY
+          // If this partition does not satisfy the number of minimum active replicas, unhealthy
           status = HealthStatus.UNHEALTHY;
         }
         partitionHealthResult.put(partitionName, status.name());
