@@ -45,12 +45,10 @@ public class FileBasedAuditLogger implements AuditLogger {
   public void write(AuditLog auditLog) {
     if (_logReadOperations) {
       _logger.info(auditLog.toString());
-    } else if (auditLog.getHttpMethod().equals(HTTPMethods.PUT.name())
-        || auditLog.getHttpMethod().equals(HTTPMethods.POST.name())
-        || auditLog.getHttpMethod().equals((HTTPMethods.DELETE.name()))) {
+    } else if (auditLog.getHttpMethod() == HTTPMethods.PUT.name()
+        || auditLog.getHttpMethod() == HTTPMethods.POST.name()
+        || auditLog.getHttpMethod() == HTTPMethods.DELETE.name()) {
       _logger.info(auditLog.toString());
-    } else if (auditLog.getHttpMethod().equals(HTTPMethods.GET.name())) {
-      _logger.debug(auditLog.toString());
     }
   }
 }
