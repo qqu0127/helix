@@ -114,7 +114,6 @@ public class ResourceAccessor extends AbstractHelixResource {
     Map<String, String> resourceHealthResult = new HashMap<>();
 
     for (String resourceName : resourcesInIdealState) {
-
       if(resourcesInExternalView.contains(resourceName)) {
         Map<String, String> partitionHealth = computePartitionHealth(clusterId, resourceName);
 
