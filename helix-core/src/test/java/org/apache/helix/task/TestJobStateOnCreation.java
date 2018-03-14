@@ -20,22 +20,15 @@ package org.apache.helix.task;
  */
 
 import com.google.common.collect.Sets;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import org.apache.helix.HelixException;
-import org.apache.helix.TestHelper;
 import org.apache.helix.controller.stages.ClusterDataCache;
 import org.apache.helix.controller.stages.CurrentStateOutput;
 import org.apache.helix.integration.manager.MockParticipantManager;
 import org.apache.helix.integration.task.MockTask;
-import org.apache.helix.integration.task.TaskTestUtil;
 import org.apache.helix.integration.task.WorkflowGenerator;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.Resource;
 import org.apache.helix.model.ResourceAssignment;
-import org.apache.helix.model.ResourceConfig;
 import org.apache.helix.tools.ClusterSetup;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -43,7 +36,7 @@ import org.testng.annotations.Test;
 
 public class TestJobStateOnCreation extends TaskSynchronizedTestBase {
 
-  private static final String RESOURCE_NAME = "TEST_RESOURCE";
+  private static final String WORKFLOW_NAME = "testWorkflow";
 
   private ClusterDataCache _cache;
   private IdealState _idealState;
@@ -53,47 +46,41 @@ public class TestJobStateOnCreation extends TaskSynchronizedTestBase {
   @BeforeClass
   public void beforeClass() throws Exception {
     _cache = new ClusterDataCache();
-    _idealState = new IdealState(RESOURCE_NAME);
-    _resource = new Resource(RESOURCE_NAME);
+    _idealState = new IdealState(WORKFLOW_NAME);
+    _resource = new Resource(WORKFLOW_NAME);
     _currStateOutput = new CurrentStateOutput();
     _participants =  new MockParticipantManager[_numNodes];
     String namespace = "/" + CLUSTER_NAME;
     if (_gZkClient.exists(namespace)) {
       _gZkClient.deleteRecursively(namespace);
     }
-
     _setupTool = new ClusterSetup(ZK_ADDR);
     _setupTool.addCluster(CLUSTER_NAME, true);
-    setupParticipants();
-    setupDBs();
-    startParticipants();
     createManagers();
   }
 
   @Test
   public void testJobStateOnCreation() {
-    // Get ResourceConfig ready
-    String workflowName = "testWorkflow";
-    Workflow.Builder builder = new Workflow.Builder(workflowName);
+    Workflow.Builder builder = new Workflow.Builder(WORKFLOW_NAME);
     JobConfig.Builder jobConfigBuilder = new JobConfig.Builder().setCommand(MockTask.TASK_COMMAND)
-        .setTargetResource(RESOURCE_NAME).setTargetPartitionStates(Sets.newHashSet("SLAVE","MASTER"))
+        .setTargetResource(WORKFLOW_NAME).setTargetPartitionStates(Sets.newHashSet("SLAVE","MASTER"))
         .setJobCommandConfigMap(WorkflowGenerator.DEFAULT_COMMAND_CONFIG);
-    String jobName = "job" + RESOURCE_NAME;
+    String jobName = "job";
     builder = builder.addJob(jobName, jobConfigBuilder);
     Workflow workflow = builder.build();
     WorkflowConfig workflowConfig = workflow.getWorkflowConfig();
     JobConfig jobConfig = jobConfigBuilder.build();
     workflowConfig.getRecord().merge(jobConfig.getRecord());
 
-    _cache.getJobConfigMap().put(RESOURCE_NAME, jobConfig);
-    _cache.getWorkflowConfigMap().put(RESOURCE_NAME, workflowConfig);
+    _cache.getJobConfigMap().put(WORKFLOW_NAME + "_" + jobName, jobConfig);
+    _cache.getWorkflowConfigMap().put(WORKFLOW_NAME, workflowConfig);
 
     WorkflowRebalancer workflowRebalancer = new WorkflowRebalancer();
     workflowRebalancer.init(_manager);
     ResourceAssignment resourceAssignment = workflowRebalancer
         .computeBestPossiblePartitionState(_cache, _idealState, _resource, _currStateOutput);
 
-    WorkflowContext workflowContext = _cache.getWorkflowContext(RESOURCE_NAME);
+    WorkflowContext workflowContext = _cache.getWorkflowContext(WORKFLOW_NAME);
     Map<String, TaskState> jobStates = workflowContext.getJobStates();
     for (String job : jobStates.keySet()) {
       Assert.assertEquals(jobStates.get(job), TaskState.NOT_STARTED);
