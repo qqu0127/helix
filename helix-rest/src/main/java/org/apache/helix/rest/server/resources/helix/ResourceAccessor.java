@@ -103,7 +103,7 @@ public class ResourceAccessor extends AbstractHelixResource {
    * @return JSON result
    */
   @GET
-  @Path("resources/health")
+  @Path("health")
   public Response getResourceHealth(@PathParam("clusterId") String clusterId) {
 
     ZkClient zkClient = getZkClient();
@@ -147,17 +147,9 @@ public class ResourceAccessor extends AbstractHelixResource {
   @GET
   @Path("{resourceName}/health")
   public Response getPartitionHealth(@PathParam("clusterId") String clusterId,
-      @PathParam("resourceName") String resourceName) throws IOException {
+      @PathParam("resourceName") String resourceName) {
 
-    ObjectNode root = JsonNodeFactory.instance.objectNode();
-    root.put(Properties.id.name(), JsonNodeFactory.instance.textNode(clusterId));
-
-    Map<String, String> partitionHealthResult = computePartitionHealth(clusterId, resourceName);
-
-    root.put("resourceName", resourceName);
-    root.put("partitionHealthStatus", OBJECT_MAPPER.writeValueAsString(partitionHealthResult));
-
-    return JSONRepresentation(root);
+    return JSONRepresentation(computePartitionHealth(clusterId, resourceName));
   }
 
   @GET
@@ -374,7 +366,7 @@ public class ResourceAccessor extends AbstractHelixResource {
         Map<String, String> stateMapInExternalView = externalView.getStateMap(partitionName);
         Collection<String> allReplicaStatesInExternalView =
             (stateMapInExternalView != null && !stateMapInExternalView.isEmpty()) ?
-            stateMapInExternalView.values() : Collections.EMPTY_LIST;
+            stateMapInExternalView.values() : Collections.<String>emptyList();
         int numActiveReplicasInExternalView = 0;
         HealthStatus status = HealthStatus.HEALTHY;
 
