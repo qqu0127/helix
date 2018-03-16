@@ -19,9 +19,11 @@ package org.apache.helix.controller.stages;
  * under the License.
  */
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import java.util.UUID;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
@@ -43,6 +45,7 @@ import org.apache.helix.model.Partition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
+import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
 
 public class TestRebalancePipeline extends ZkUnitTestBase {
@@ -165,33 +168,45 @@ public class TestRebalancePipeline extends ZkUnitTestBase {
     Assert.assertEquals(messages.size(), 1);
 
     // round2: node0 and node1 update current states but not removing messages
-    // controller's rebalance pipeline should be triggered but since messages are not
-    // removed
-    // no new messages will be sent
+    // Since controller's rebalancer pipeline will GC pending messages, and both hosts
+    // update current states to SLAVE, controller will send out rebalance message to
+    // have one host to become master
     setCurrentState(clusterName, "localhost_0", resourceName, resourceName + "_0", "session_0",
         "SLAVE");
     setCurrentState(clusterName, "localhost_1", resourceName, resourceName + "_0", "session_1",
         "SLAVE");
     Thread.sleep(1000);
-    messages = accessor.getChildNames(keyBuilder.messages("localhost_0"));
-    Assert.assertEquals(messages.size(), 1);
 
-    messages = accessor.getChildNames(keyBuilder.messages("localhost_1"));
-    Assert.assertEquals(messages.size(), 1);
+    List<Message> host0Msg = accessor.getChildValues(keyBuilder.messages("localhost_0"));
+    List<Message> host1Msg = accessor.getChildValues(keyBuilder.messages("localhost_1"));
+    List<Message> allMsgs = new ArrayList<>(host0Msg);
+    allMsgs.addAll(host1Msg);
+    Assert.assertEquals(allMsgs.size(), 1);
+    Assert.assertEquals(allMsgs.get(0).getToState(), "MASTER");
+    Assert.assertEquals(allMsgs.get(0).getFromState(), "SLAVE");
 
-    // round3: node0 removes message and controller's rebalance pipeline should be
-    // triggered
-    // and sends S->M to node0
-    messages = accessor.getChildNames(keyBuilder.messages("localhost_0"));
-    accessor.removeProperty(keyBuilder.message("localhost_0", messages.get(0)));
+    // round3: node0 changes state to master, but failed to delete message,
+    // controller will clean it up
+    setCurrentState(clusterName, "localhost_0", resourceName, resourceName + "_0", "session_0",
+        "MASTER");
     Thread.sleep(1000);
 
     messages = accessor.getChildNames(keyBuilder.messages("localhost_0"));
-    Assert.assertEquals(messages.size(), 1);
-    ZNRecord msg =
-        accessor.getProperty(keyBuilder.message("localhost_0", messages.get(0))).getRecord();
-    String toState = msg.getSimpleField(Attributes.TO_STATE.toString());
-    Assert.assertEquals(toState, "MASTER");
+    Assert.assertTrue(messages.isEmpty());
+
+
+    // round4: node0 has duplicated message, i.e. there is a P2P message sent to it due to error
+    // in the triggered pipeline, controller should remove duplicated message
+    Message sourceMsg = allMsgs.get(0);
+    Message dupMsg = new Message(sourceMsg.getMsgType(), UUID.randomUUID().toString());
+    dupMsg.getRecord().setSimpleFields(sourceMsg.getRecord().getSimpleFields());
+    dupMsg.getRecord().setListFields(sourceMsg.getRecord().getListFields());
+    dupMsg.getRecord().setMapFields(sourceMsg.getRecord().getMapFields());
+    accessor.setProperty(dupMsg.getKey(accessor.keyBuilder(), dupMsg.getTgtName()), dupMsg);
+    Thread.sleep(1000);
+
+    messages = accessor.getChildNames(keyBuilder.messages("localhost_0"));
+    Assert.assertTrue(messages.isEmpty());
 
     System.out.println("END " + clusterName + " at " + new Date(System.currentTimeMillis()));
 
