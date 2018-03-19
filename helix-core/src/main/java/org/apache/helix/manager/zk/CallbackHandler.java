@@ -574,7 +574,7 @@ public class CallbackHandler implements IZkChildListener, IZkDataListener {
   @Override
   public void handleChildChange(String parentPath, List<String> currentChilds) {
     logger.info("Data change callback: child changed, path: " + parentPath + ", current child count: "
-        + currentChilds.size());
+        +  (currentChilds !=null?currentChilds.size() : 0));
 
     try {
       updateNotificationTime(System.nanoTime());
