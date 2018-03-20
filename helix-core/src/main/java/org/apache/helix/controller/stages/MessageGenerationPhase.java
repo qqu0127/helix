@@ -50,6 +50,13 @@ import org.slf4j.LoggerFactory;
  */
 public class MessageGenerationPhase extends AbstractBaseStage {
   private final static String NO_DESIRED_STATE = "NoDesiredState";
+
+  // If we see there is any invalid pending message leaving on host, i.e. message
+  // tells participant to change from SLAVE to MASTER, and the participant is already
+  // at MASTER state, we wait for 3 sec and if the message is still not cleaned up by
+  // participant, controller will cleanup them proactively to unblock further state
+  // transition
+  private final static long DEFAULT_OBSELETE_MSG_PURGE_DELAY = 3 * 1000;
   private static Logger logger = LoggerFactory.getLogger(MessageGenerationPhase.class);
 
   @Override
@@ -124,7 +131,8 @@ public class MessageGenerationPhase extends AbstractBaseStage {
 
           Message message = null;
 
-          if (shouldCleanUpPendingMessage(pendingMessage, currentState)) {
+          if (shouldCleanUpPendingMessage(pendingMessage, currentState,
+              currentStateOutput.getEndTime(resourceName, partition, instanceName))) {
             logger.info(
                 "Adding pending message {} on instance {} to GC. Msg: {}->{}, current state of resource {}:{} is {}",
                 pendingMessage.getMsgId(), instanceName, pendingMessage.getFromState(),
@@ -262,15 +270,23 @@ public class MessageGenerationPhase extends AbstractBaseStage {
     });
   }
 
-  private boolean shouldCleanUpPendingMessage(Message pendingMsg, String currentState) {
+  private boolean shouldCleanUpPendingMessage(Message pendingMsg, String currentState,
+      Long currentStateTransitionEndTime) {
     if (pendingMsg == null) {
       return false;
     }
-    // Partition's current state should be either pending message's fromState or toState or
-    // the message is invalid and can be safely deleted.
-    // If pending message's toState is same as current state, we should just remove this message
-    // as participant does not retry message deletion upon failure. If pending message's
-    return !currentState.equalsIgnoreCase(pendingMsg.getFromState());
+    if (currentState.equalsIgnoreCase(pendingMsg.getToState())) {
+      // If pending message's toState is same as current state, state transition is finished
+      // successfully. In this case, we will wait for a timeout for participant to cleanup
+      // processed message. If participant fail to do so, controller is going to proactively delete
+      // the message as participant does not retry message deletion upon failure.
+      return System.currentTimeMillis() - currentStateTransitionEndTime
+          > DEFAULT_OBSELETE_MSG_PURGE_DELAY;
+    } else {
+      // Partition's current state should be either pending message's fromState or toState or
+      // the message is invalid and can be safely deleted immediately.
+      return !currentState.equalsIgnoreCase(pendingMsg.getFromState());
+    }
   }
 
   private Message createStateTransitionMessage(HelixManager manager, Resource resource, String partitionName,

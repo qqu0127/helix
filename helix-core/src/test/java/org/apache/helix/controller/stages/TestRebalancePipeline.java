@@ -22,7 +22,6 @@ package org.apache.helix.controller.stages;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
 import java.util.UUID;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixDataAccessor;
@@ -40,12 +39,10 @@ import org.apache.helix.model.ClusterConfig;
 import org.apache.helix.model.CurrentState;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.Message;
-import org.apache.helix.model.Message.Attributes;
 import org.apache.helix.model.Partition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.AssertJUnit;
 import org.testng.annotations.Test;
 
 public class TestRebalancePipeline extends ZkUnitTestBase {
@@ -168,12 +165,23 @@ public class TestRebalancePipeline extends ZkUnitTestBase {
     Assert.assertEquals(messages.size(), 1);
 
     // round2: node0 and node1 update current states but not removing messages
-    // Since controller's rebalancer pipeline will GC pending messages, and both hosts
+    // Since controller's rebalancer pipeline will GC pending messages after timeout, and both hosts
     // update current states to SLAVE, controller will send out rebalance message to
     // have one host to become master
     setCurrentState(clusterName, "localhost_0", resourceName, resourceName + "_0", "session_0",
-        "SLAVE");
+        "SLAVE", true);
     setCurrentState(clusterName, "localhost_1", resourceName, resourceName + "_0", "session_1",
+        "SLAVE", true);
+
+    // Controller has 3s timeout, so after 1s, controller should not have GCed message
+    Thread.sleep(1000);
+    Assert.assertEquals(accessor.getChildValues(keyBuilder.messages("localhost_0")).size(), 1);
+    Assert.assertEquals(accessor.getChildValues(keyBuilder.messages("localhost_1")).size(), 1);
+
+    // After another 2 second, controller should cleanup messages and continue to rebalance
+    Thread.sleep(3000);
+    // Manually trigger another rebalance by touching current state
+    setCurrentState(clusterName, "localhost_0", resourceName, resourceName + "_0", "session_0",
         "SLAVE");
     Thread.sleep(1000);
 
@@ -188,15 +196,18 @@ public class TestRebalancePipeline extends ZkUnitTestBase {
     // round3: node0 changes state to master, but failed to delete message,
     // controller will clean it up
     setCurrentState(clusterName, "localhost_0", resourceName, resourceName + "_0", "session_0",
-        "MASTER");
+        "MASTER", true);
+    Thread.sleep(3500);
+    // touch current state to trigger rebalance
+    setCurrentState(clusterName, "localhost_0", resourceName, resourceName + "_0", "session_0",
+        "MASTER", false);
     Thread.sleep(1000);
-
-    messages = accessor.getChildNames(keyBuilder.messages("localhost_0"));
-    Assert.assertTrue(messages.isEmpty());
+    Assert.assertTrue(accessor.getChildNames(keyBuilder.messages("localhost_0")).isEmpty());
 
 
-    // round4: node0 has duplicated message, i.e. there is a P2P message sent to it due to error
-    // in the triggered pipeline, controller should remove duplicated message
+    // round4: node0 has duplicated but valid message, i.e. there is a P2P message sent to it
+    // due to error in the triggered pipeline, controller should remove duplicated message
+    // immediately as the partition has became master 3 sec ago (there is already a timeout)
     Message sourceMsg = allMsgs.get(0);
     Message dupMsg = new Message(sourceMsg.getMsgType(), UUID.randomUUID().toString());
     dupMsg.getRecord().setSimpleFields(sourceMsg.getRecord().getSimpleFields());
@@ -205,6 +216,14 @@ public class TestRebalancePipeline extends ZkUnitTestBase {
     accessor.setProperty(dupMsg.getKey(accessor.keyBuilder(), dupMsg.getTgtName()), dupMsg);
     Thread.sleep(1000);
 
+    messages = accessor.getChildNames(keyBuilder.messages("localhost_0"));
+    Assert.assertTrue(messages.isEmpty());
+
+    // round5: node0 has completely invalid message, controller should immediately delete it
+    dupMsg.setFromState("SLAVE");
+    dupMsg.setToState("OFFLINE");
+    accessor.setProperty(dupMsg.getKey(accessor.keyBuilder(), dupMsg.getTgtName()), dupMsg);
+    Thread.sleep(1000);
     messages = accessor.getChildNames(keyBuilder.messages("localhost_0"));
     Assert.assertTrue(messages.isEmpty());
 
@@ -450,6 +469,11 @@ public class TestRebalancePipeline extends ZkUnitTestBase {
 
   protected void setCurrentState(String clusterName, String instance, String resourceGroupName,
       String resourceKey, String sessionId, String state) {
+    setCurrentState(clusterName, instance, resourceGroupName, resourceKey, sessionId, state, false);
+  }
+
+  private void setCurrentState(String clusterName, String instance, String resourceGroupName,
+      String resourceKey, String sessionId, String state, boolean updateTimestamp) {
     ZKHelixDataAccessor accessor =
         new ZKHelixDataAccessor(clusterName, new ZkBaseDataAccessor<ZNRecord>(_gZkClient));
     Builder keyBuilder = accessor.keyBuilder();
@@ -458,6 +482,9 @@ public class TestRebalancePipeline extends ZkUnitTestBase {
     curState.setState(resourceKey, state);
     curState.setSessionId(sessionId);
     curState.setStateModelDefRef("MasterSlave");
+    if (updateTimestamp) {
+      curState.setEndTime(resourceKey, System.currentTimeMillis());
+    }
     accessor.setProperty(keyBuilder.currentState(instance, sessionId, resourceGroupName), curState);
   }
 
