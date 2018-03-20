@@ -65,7 +65,7 @@ public enum PropertyType {
   ERRORS_CONTROLLER(Type.CONTROLLER, true, true, true),
 
   // TASK PROPERTY
-  WORKFLOWCONTEXT(Type.RESOURCE, true, false, false, false, false);
+  WORKFLOWCONTEXT(Type.TASK, true, false, false, false, false);
 
   // @formatter:on
 
