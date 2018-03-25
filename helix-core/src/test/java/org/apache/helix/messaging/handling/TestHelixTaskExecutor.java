@@ -50,7 +50,7 @@ public class TestHelixTaskExecutor {
     }
   }
 
-  class TestMessageHandlerFactory implements MessageHandlerFactory {
+  class TestMessageHandlerFactory implements MultiTypeMessageHandlerFactory {
     int _handlersCreated = 0;
     ConcurrentHashMap<String, String> _processedMsgIds = new ConcurrentHashMap<>();
 
@@ -119,7 +119,7 @@ public class TestHelixTaskExecutor {
 
   }
 
-  class CancellableHandlerFactory implements MessageHandlerFactory {
+  class CancellableHandlerFactory implements MultiTypeMessageHandlerFactory {
 
     int _handlersCreated = 0;
     ConcurrentHashMap<String, String> _processedMsgIds = new ConcurrentHashMap<String, String>();
@@ -197,7 +197,7 @@ public class TestHelixTaskExecutor {
     }
   }
 
-  class TestStateTransitionHandlerFactory implements MessageHandlerFactory {
+  class TestStateTransitionHandlerFactory implements MultiTypeMessageHandlerFactory {
     ConcurrentHashMap<String, String> _processedMsgIds = new ConcurrentHashMap<String, String>();
     private final String _msgType;
     public TestStateTransitionHandlerFactory(String msgType) {
