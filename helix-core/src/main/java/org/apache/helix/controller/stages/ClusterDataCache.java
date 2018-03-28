@@ -146,8 +146,8 @@ public class ClusterDataCache {
       _propertyDataChangedMap.put(ChangeType.IDEAL_STATE, Boolean.valueOf(false));
       clearCachedResourceAssignments();
       _idealStateCacheMap = refreshIdealStates(accessor);
-      if (LOG.isInfoEnabled()) {
-        LOG.info("Reload IdealStates: " + _idealStateCacheMap.keySet() + ". Takes " + (
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Reload IdealStates: " + _idealStateCacheMap.size() + ". Takes " + (
             System.currentTimeMillis() - start) + " ms");
       }
     }
