@@ -309,9 +309,7 @@ public class ResourceAccessor extends AbstractHelixResource {
     } catch (HelixException ex) {
       return notFound(ex.getMessage());
     } catch (Exception ex) {
-      _logger.error(
-          "Failed to update cluster config, cluster " + clusterId + " new config: " + content
-              + ", Exception: " + ex);
+      _logger.error(String.format("Error in update resource config for resource: %s", resourceName), ex);
       return serverError(ex);
     }
     return OK();
