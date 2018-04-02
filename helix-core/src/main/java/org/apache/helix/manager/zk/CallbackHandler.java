@@ -453,13 +453,17 @@ public class CallbackHandler implements IZkChildListener, IZkDataListener {
   private void subscribeChildChange(String path, NotificationContext.Type callbackType) {
     if (callbackType == NotificationContext.Type.INIT
         || callbackType == NotificationContext.Type.CALLBACK) {
-      logger.info(
-          _manager.getInstanceName() + " subscribes child-change. path: " + path + ", listener: " + _listener);
+      if (logger.isDebugEnabled()) {
+        logger.info(
+            _manager.getInstanceName() + " subscribes child-change. path: " + path + ", listener: " + _listener);
+      }
       _zkClient.subscribeChildChanges(path, this);
     } else if (callbackType == NotificationContext.Type.FINALIZE) {
-      logger.info(
-          _manager.getInstanceName() + " unsubscribe child-change. path: " + path + ", listener: " + _listener);
-
+      if (logger.isDebugEnabled()) {
+        logger.info(
+            _manager.getInstanceName() + " unsubscribe child-change. path: " + path + ", listener: "
+                + _listener);
+      }
       _zkClient.unsubscribeChildChanges(path, this);
     }
   }
@@ -467,15 +471,18 @@ public class CallbackHandler implements IZkChildListener, IZkDataListener {
   private void subscribeDataChange(String path, NotificationContext.Type callbackType) {
     if (callbackType == NotificationContext.Type.INIT
         || callbackType == NotificationContext.Type.CALLBACK) {
-      logger.info(
-          _manager.getInstanceName() + " subscribe data-change. path: " + path + ", listener: "
-              + _listener);
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            _manager.getInstanceName() + " subscribe data-change. path: " + path + ", listener: "
+                + _listener);
+      }
       _zkClient.subscribeDataChanges(path, this);
     } else if (callbackType == NotificationContext.Type.FINALIZE) {
-      logger.info(
-          _manager.getInstanceName() + " unsubscribe data-change. path: " + path + ", listener: "
-              + _listener);
-
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            _manager.getInstanceName() + " unsubscribe data-change. path: " + path + ", listener: "
+                + _listener);
+      }
       _zkClient.unsubscribeDataChanges(path, this);
     }
   }
@@ -492,15 +499,18 @@ public class CallbackHandler implements IZkChildListener, IZkDataListener {
     long start = System.currentTimeMillis();
     if (_eventTypes.contains(EventType.NodeDataChanged) || _eventTypes
         .contains(EventType.NodeCreated) || _eventTypes.contains(EventType.NodeDeleted)) {
-      logger.debug("Subscribing data change listener to path:" + path);
+      logger.info("Subscribing data change listener to path:" + path + " for listener: " + _listener);
       subscribeDataChange(path, callbackType);
     }
 
     if (_eventTypes.contains(EventType.NodeChildrenChanged)) {
-      logger.debug("Subscribing child change listener to path:" + path);
+      logger.info(
+          "Subscribing child change listener to path:" + path + " for listener: " + _listener);
       subscribeChildChange(path, callbackType);
       if (watchChild) {
-        logger.debug("Subscribing data change listener to all children for path:" + path);
+        logger.info(
+            "Subscribing data change listener to all children for path:" + path + " for listener: "
+                + _listener);
         try {
           switch (_changeType) {
           case CURRENT_STATE:
@@ -585,7 +595,9 @@ public class CallbackHandler implements IZkChildListener, IZkDataListener {
 
   @Override
   public void handleDataChange(String dataPath, Object data) {
-    logger.info("Data change callback: paths changed: " + dataPath);
+    if (logger.isDebugEnabled()) {
+      logger.debug("Data change callback: paths changed: " + dataPath);
+    }
 
     try {
       updateNotificationTime(System.nanoTime());
@@ -604,19 +616,25 @@ public class CallbackHandler implements IZkChildListener, IZkDataListener {
 
   @Override
   public void handleDataDeleted(String dataPath) {
-    logger.info("Data change callback: path deleted: " + dataPath);
+    if (logger.isDebugEnabled()) {
+      logger.debug("Data change callback: path deleted: " + dataPath);
+    }
 
     try {
       updateNotificationTime(System.nanoTime());
       if (dataPath != null && dataPath.startsWith(_path)) {
-        logger.info(_manager.getInstanceName() + " unsubscribe data-change. path: " + dataPath
-            + ", listener: " + _listener);
+        if (logger.isDebugEnabled()) {
+          logger.info(_manager.getInstanceName() + " unsubscribe data-change. path: " + dataPath
+              + ", listener: " + _listener);
+        }
         _zkClient.unsubscribeDataChanges(dataPath, this);
 
         // only needed for bucketized parent, but OK if we don't have child-change
         // watch on the bucketized parent path
-        logger.info(_manager.getInstanceName() + " unsubscribe child-change. path: " + dataPath
-            + ", listener: " + _listener);
+        if (logger.isDebugEnabled()) {
+          logger.info(_manager.getInstanceName() + " unsubscribe child-change. path: " + dataPath
+              + ", listener: " + _listener);
+        }
         _zkClient.unsubscribeChildChanges(dataPath, this);
         // No need to invoke() since this event will handled by child-change on parent-node
       }
@@ -629,9 +647,13 @@ public class CallbackHandler implements IZkChildListener, IZkDataListener {
 
   @Override
   public void handleChildChange(String parentPath, List<String> currentChilds) {
-    logger.info(
-        "Data change callback: child changed, path: " + parentPath + ", current child count: "
-            + (currentChilds != null ? currentChilds.size() : 0));
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "Data change callback: child changed, path: " + parentPath + ", current child count: " + (
+              currentChilds != null
+                  ? currentChilds.size()
+                  : 0));
+    }
 
     try {
       updateNotificationTime(System.nanoTime());

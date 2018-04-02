@@ -189,9 +189,11 @@ public class ZkClient implements Watcher {
       IZkDataListenerEntry listenerEntry = new IZkDataListenerEntry(listener, prefetchEnabled);
       listenerEntries.add(listenerEntry);
       if (prefetchEnabled) {
-        LOG.debug(
-            "Subscribed data changes for " + path + ", listener: " + listener + ", prefetch data: "
-                + prefetchEnabled);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug(
+              "Subscribed data changes for " + path + ", listener: " + listener + ", prefetch data: "
+                  + prefetchEnabled);
+        }
       }
     }
     watchForData(path);
@@ -601,7 +603,9 @@ public class ZkClient implements Watcher {
 
   @Override
   public void process(WatchedEvent event) {
-    LOG.debug("Received event: " + event);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Received event: " + event);
+    }
     _zookeeperEventThread = Thread.currentThread();
 
     boolean stateChanged = event.getPath() == null;
@@ -613,8 +617,10 @@ public class ZkClient implements Watcher {
 
 
     if (event.getType() == Event.EventType.NodeDeleted) {
-      String path = event.getPath();
-      LOG.debug(path);
+      if (LOG.isDebugEnabled()) {
+        String path = event.getPath();
+        LOG.debug(path);
+      }
     }
 
     getEventLock().lock();
@@ -622,8 +628,10 @@ public class ZkClient implements Watcher {
 
       // We might have to install child change event listener if a new node was created
       if (getShutdownTrigger()) {
-        LOG.debug("ignoring event '{" + event.getType() + " | " + event.getPath()
-            + "}' since shutdown triggered");
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("ignoring event '{" + event.getType() + " | " + event.getPath()
+              + "}' since shutdown triggered");
+        }
         return;
       }
       if (stateChanged) {
@@ -658,7 +666,9 @@ public class ZkClient implements Watcher {
       // update state change counter.
       recordStateChange(stateChanged, dataChanged);
 
-      LOG.debug("Leaving process event");
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Leaving process event");
+      }
     }
   }
 
@@ -906,7 +916,9 @@ public class ZkClient implements Watcher {
             try {
               Object data = null;
               if (listener.isPrefetchData()) {
-                LOG.debug("Prefetch data for path: " + path);
+                if (LOG.isDebugEnabled()) {
+                  LOG.debug("Prefetch data for path: " + path);
+                }
                 data = readData(path, null, true);
               }
               listener.getDataListener().handleDataChange(path, data);
@@ -947,7 +959,9 @@ public class ZkClient implements Watcher {
   public boolean waitUntilExists(String path, TimeUnit timeUnit, long time)
       throws ZkInterruptedException {
     Date timeout = new Date(System.currentTimeMillis() + timeUnit.toMillis(time));
-    LOG.debug("Waiting until znode '" + path + "' becomes available.");
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Waiting until znode '" + path + "' becomes available.");
+    }
     if (exists(path)) {
       return true;
     }
