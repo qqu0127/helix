@@ -64,7 +64,7 @@ public class MessageGenerationPhase extends AbstractBaseStage {
     HelixManager manager = event.getAttribute(AttributeName.helixmanager.name());
     ClusterDataCache cache = event.getAttribute(AttributeName.ClusterDataCache.name());
     Map<String, Resource> resourceMap = event.getAttribute(AttributeName.RESOURCES_TO_REBALANCE.name());
-    Map<String, List<Message>> pendingMessagesToCleanUp = new HashMap<>();
+    Map<String, Map<String, Message>> pendingMessagesToCleanUp = new HashMap<>();
     CurrentStateOutput currentStateOutput =
         event.getAttribute(AttributeName.CURRENT_STATE.name());
     IntermediateStateOutput intermediateStateOutput =
@@ -134,13 +134,14 @@ public class MessageGenerationPhase extends AbstractBaseStage {
           if (shouldCleanUpPendingMessage(pendingMessage, currentState,
               currentStateOutput.getEndTime(resourceName, partition, instanceName))) {
             logger.info(
-                "Adding pending message {} on instance {} to GC. Msg: {}->{}, current state of resource {}:{} is {}",
+                "Adding pending message {} on instance {} to clean up. Msg: {}->{}, current state of resource {}:{} is {}",
                 pendingMessage.getMsgId(), instanceName, pendingMessage.getFromState(),
                 pendingMessage.getToState(), resourceName, partition, currentState);
             if (!pendingMessagesToCleanUp.containsKey(instanceName)) {
-              pendingMessagesToCleanUp.put(instanceName, new ArrayList<Message>());
+              pendingMessagesToCleanUp.put(instanceName, new HashMap<String, Message>());
             }
-            pendingMessagesToCleanUp.get(instanceName).add(pendingMessage);
+            pendingMessagesToCleanUp.get(instanceName)
+                .put(pendingMessage.getMsgId(), pendingMessage);
           }
 
           if (desiredState.equals(NO_DESIRED_STATE) || desiredState.equalsIgnoreCase(currentState)) {
@@ -248,14 +249,14 @@ public class MessageGenerationPhase extends AbstractBaseStage {
    * @param accessor Data accessor used to clean up message
    */
   private void schedulePendingMessageCleanUp(
-      final Map<String, List<Message>> pendingMessagesToPurge, ExecutorService workerPool,
+      final Map<String, Map<String, Message>> pendingMessagesToPurge, ExecutorService workerPool,
       final HelixDataAccessor accessor) {
     workerPool.submit(new Callable<Object>() {
         @Override
         public Object call() {
-          for (Map.Entry<String, List<Message>> entry : pendingMessagesToPurge.entrySet()) {
+          for (Map.Entry<String, Map<String, Message>> entry : pendingMessagesToPurge.entrySet()) {
             String instanceName = entry.getKey();
-            for (Message msg : entry.getValue()) {
+            for (Message msg : entry.getValue().values()) {
               if (accessor.removeProperty(msg.getKey(accessor.keyBuilder(), instanceName))) {
                 logger.info("Deleted message {} from instance {}", msg.getMsgId(), instanceName);
               }
