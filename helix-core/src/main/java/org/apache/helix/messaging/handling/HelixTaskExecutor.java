@@ -940,16 +940,20 @@ public class HelixTaskExecutor implements MessageListener, TaskExecutor {
       updateMessageState(readMsgs, accessor, instanceName);
 
       for (Map.Entry<String, MessageHandler> handlerEntry : stateTransitionHandlers.entrySet()) {
+        MessageHandler handler = handlerEntry.getValue();
+        NotificationContext context = stateTransitionContexts.get(handlerEntry.getKey());
+        Message msg = handler._message;
         scheduleTask(
-            new HelixTask(handlerEntry.getValue()._message,
-            stateTransitionContexts.get(handlerEntry.getKey()), handlerEntry.getValue(), this)
+            new HelixTask(msg, context, handler, this)
         );
       }
 
       for (int i = 0; i < nonStateTransitionHandlers.size(); i++) {
+        MessageHandler handler = nonStateTransitionHandlers.get(i);
+        NotificationContext context = nonStateTransitionContexts.get(i);
+        Message msg = handler._message;
         scheduleTask(
-            new HelixTask(nonStateTransitionHandlers.get(i)._message,
-                nonStateTransitionContexts.get(i), nonStateTransitionHandlers.get(i), this)
+            new HelixTask(msg, context, handler, this)
         );
       }
     }

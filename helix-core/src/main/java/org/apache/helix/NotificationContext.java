@@ -87,9 +87,7 @@ public class NotificationContext {
     copy.setPathChanged(_pathChanged);
     copy.setEventName(_eventName);
     copy.setCreationTime(_creationTime);
-    for (Map.Entry<String, Object> entry : _map.entrySet()) {
-      copy.add(entry.getKey(), entry.getValue());
-    }
+    copy._map.putAll(_map);
     return copy;
   }
 
