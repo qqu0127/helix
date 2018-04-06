@@ -134,7 +134,7 @@ public abstract class DynamicMBeanProvider implements DynamicMBean, SensorNamePr
   public abstract DynamicMBeanProvider register() throws JMException;
 
   /**
-   * After unregistered, the MBean can't be registered again, a new monitor has be to created.
+   * After unregistered, the MBean can't be registered again, a new monitor has to be created.
    */
   public synchronized void unregister() {
     MBeanRegistrar.unregister(_objectName);
