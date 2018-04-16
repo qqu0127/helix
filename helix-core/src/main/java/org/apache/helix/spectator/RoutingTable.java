@@ -464,23 +464,19 @@ class RoutingTable {
   private static Comparator<InstanceConfig> INSTANCE_CONFIG_COMPARATOR =
       new Comparator<InstanceConfig>() {
         @Override
-        public int compare(InstanceConfig o1, InstanceConfig o2) {
-          if (o1 == o2) {
+        public int compare(InstanceConfig config1, InstanceConfig config2) {
+          if (config1 == config2) {
             return 0;
           }
-          if (o1 == null) {
+          if (config1 == null) {
             return -1;
           }
-          if (o2 == null) {
+          if (config2 == null) {
             return 1;
           }
-
-          int compareTo = o1.getHostName().compareTo(o2.getHostName());
-          if (compareTo == 0) {
-            return o1.getPort().compareTo(o2.getPort());
-          }
-
-          return compareTo;
+          // HELIX-936: a NPE on the hostname; compare IDs instead. IDs for InstanceConfigs are
+          // concatenation of instance name, host, and port.
+          return config1.getId().compareTo(config2.getId());
         }
       };
 }
