@@ -221,6 +221,8 @@ public class RoutingTableProvider
   public void addRoutingTableChangeListener(
       final RoutingTableChangeListener routingTableChangeListener, Object context) {
     _routingTableChangeListenerMap.put(routingTableChangeListener, new ListenerContext(context));
+    logger.info("Attach RoutingTableProviderChangeListener {}",
+        routingTableChangeListener.getClass().getName());
   }
 
   /**
@@ -229,6 +231,8 @@ public class RoutingTableProvider
    */
   public Object removeRoutingTableChangeListener(
       final RoutingTableChangeListener routingTableChangeListener) {
+    logger.info("Detach RoutingTableProviderChangeListener {}",
+        routingTableChangeListener.getClass().getName());
     return _routingTableChangeListenerMap.remove(routingTableChangeListener);
   }
 
