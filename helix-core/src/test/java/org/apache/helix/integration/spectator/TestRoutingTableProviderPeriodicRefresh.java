@@ -125,6 +125,7 @@ public class TestRoutingTableProviderPeriodicRefresh extends ZkIntegrationTestBa
     for (MockParticipantManager p : _participants) {
       p.syncStop();
     }
+
     _controller.syncStop();
     _spectator.disconnect();
     _spectator_2.disconnect();
@@ -209,5 +210,10 @@ public class TestRoutingTableProviderPeriodicRefresh extends ZkIntegrationTestBa
     // The timer should NOT have gone off yet, the refresh count must stay the same
     Assert.assertEquals(_routingTableProviderLongPeriodicRefresh.getRefreshCount(),
         prevRefreshCount);
+
+    // Call shutdown to make sure they are shutting down properly
+    _routingTableProvider.shutdown();
+    _routingTableProviderNoPeriodicRefresh.shutdown();
+    _routingTableProviderLongPeriodicRefresh.shutdown();
   }
 }

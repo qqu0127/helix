@@ -70,6 +70,7 @@ public class RoutingTableProvider
   private long _lastRefreshTimestamp;
   private boolean _isPeriodicRefreshEnabled = true; // Default is enabled
   private long _periodRefreshInterval;
+  private ScheduledThreadPoolExecutor _periodicRefreshExecutor;
 
   public RoutingTableProvider() {
     this(null);
@@ -162,8 +163,8 @@ public class RoutingTableProvider
       final NotificationContext periodicRefreshContext = new NotificationContext(_helixManager);
       periodicRefreshContext.setType(NotificationContext.Type.PERIODIC_REFRESH);
       // Create a thread that runs at specified interval
-      ScheduledThreadPoolExecutor periodicRefreshExecutor = new ScheduledThreadPoolExecutor(1);
-      periodicRefreshExecutor.scheduleAtFixedRate(new Runnable() {
+      _periodicRefreshExecutor = new ScheduledThreadPoolExecutor(1);
+      _periodicRefreshExecutor.scheduleAtFixedRate(new Runnable() {
         @Override
         public void run() {
           // If enough time has elapsed since last refresh, queue a refresh event
@@ -183,6 +184,10 @@ public class RoutingTableProvider
    * Shutdown current RoutingTableProvider. Once it is shutdown, it should never be reused.
    */
   public void shutdown() {
+    if (_periodicRefreshExecutor != null) {
+      _periodicRefreshExecutor.purge();
+      _periodicRefreshExecutor.shutdown();
+    }
     _routerUpdater.shutdown();
     if (_helixManager != null) {
       PropertyKey.Builder keyBuilder = _helixManager.getHelixDataAccessor().keyBuilder();
