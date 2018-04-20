@@ -38,10 +38,8 @@ public class TestSourceClusterDataProvider extends ViewAggregatorIntegrationTest
   @Test
   public void testSourceClusterDataProviderWatchAndRefresh() throws Exception {
     String clusterName = _allSourceClusters.get(0);
-    List<PropertyType> properties = Arrays.asList(
-        new PropertyType[] { PropertyType.LIVEINSTANCES, PropertyType.EXTERNALVIEW,
-            PropertyType.INSTANCES
-        });
+    List<PropertyType> properties = Arrays
+        .asList(PropertyType.LIVEINSTANCES, PropertyType.EXTERNALVIEW, PropertyType.INSTANCES);
 
     ViewClusterSourceConfig sourceClusterConfig =
         new ViewClusterSourceConfig(clusterName, ZK_ADDR, properties);

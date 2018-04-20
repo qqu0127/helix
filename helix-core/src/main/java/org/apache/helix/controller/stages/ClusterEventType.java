@@ -33,7 +33,6 @@ public enum ClusterEventType {
   Resume,
   PeriodicalRebalance,
   RetryRebalance,
-  ViewClusterPeriodicRefresh,
   StateVerifier,
   Unknown
 }

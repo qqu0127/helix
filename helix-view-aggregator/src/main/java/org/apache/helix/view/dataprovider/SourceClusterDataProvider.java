@@ -34,13 +34,12 @@ import org.apache.helix.api.listeners.ExternalViewChangeListener;
 import org.apache.helix.api.listeners.InstanceConfigChangeListener;
 import org.apache.helix.api.listeners.LiveInstanceChangeListener;
 import org.apache.helix.api.listeners.PreFetch;
-import org.apache.helix.common.ClusterEventProcessor;
+import org.apache.helix.common.DedupEventProcessor;
 import org.apache.helix.common.caches.BasicClusterDataCache;
-import org.apache.helix.controller.stages.ClusterEvent;
-import org.apache.helix.controller.stages.ClusterEventType;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.LiveInstance;
+import org.apache.helix.view.common.ClusterViewEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,14 +53,14 @@ public class SourceClusterDataProvider extends BasicClusterDataCache
   private static final Logger LOG = LoggerFactory.getLogger(SourceClusterDataProvider.class);
 
   private final HelixManager _helixManager;
-  private final ClusterEventProcessor _eventProcessor;
+  private final DedupEventProcessor<ClusterViewEvent.Type, ClusterViewEvent> _eventProcessor;
 
   protected ViewClusterSourceConfig _sourceClusterConfig;
   private HelixDataAccessor _dataAccessor;
   private PropertyKey.Builder _propertyKeyBuilder;
 
   public SourceClusterDataProvider(ViewClusterSourceConfig config,
-      ClusterEventProcessor eventProcessor) {
+      DedupEventProcessor<ClusterViewEvent.Type, ClusterViewEvent> eventProcessor) {
     super(config.getName());
     _eventProcessor = eventProcessor;
     _sourceClusterConfig = config;
@@ -173,7 +172,7 @@ public class SourceClusterDataProvider extends BasicClusterDataCache
   @PreFetch(enabled = false)
   public void onInstanceConfigChange(List<InstanceConfig> instanceConfigs,
       NotificationContext context) {
-    queueEvent(context, ClusterEventType.InstanceConfigChange,
+    queueEvent(context, ClusterViewEvent.Type.InstanceConfigChange,
         HelixConstants.ChangeType.INSTANCE_CONFIG);
   }
 
@@ -181,7 +180,7 @@ public class SourceClusterDataProvider extends BasicClusterDataCache
   @PreFetch(enabled = false)
   public void onLiveInstanceChange(List<LiveInstance> liveInstances,
       NotificationContext changeContext) {
-    queueEvent(changeContext, ClusterEventType.LiveInstanceChange,
+    queueEvent(changeContext, ClusterViewEvent.Type.LiveInstanceChange,
         HelixConstants.ChangeType.LIVE_INSTANCE);
   }
 
@@ -189,21 +188,21 @@ public class SourceClusterDataProvider extends BasicClusterDataCache
   @PreFetch(enabled = false)
   public void onExternalViewChange(List<ExternalView> externalViewList,
       NotificationContext changeContext) {
-    queueEvent(changeContext, ClusterEventType.ExternalViewChange,
+    queueEvent(changeContext, ClusterViewEvent.Type.ExternalViewChange,
         HelixConstants.ChangeType.EXTERNAL_VIEW);
   }
 
-  private void queueEvent(NotificationContext context,
-      ClusterEventType clusterEventType, HelixConstants.ChangeType cacheChangeType)
+  private void queueEvent(NotificationContext context, ClusterViewEvent.Type changeType,
+      HelixConstants.ChangeType cacheChangeType)
       throws IllegalStateException {
     // TODO: in case of FINALIZE, if we are not shutdown, re-connect helix manager and report error
     if (context != null && context.getType() != NotificationContext.Type.FINALIZE) {
       notifyDataChange(cacheChangeType);
-      _eventProcessor.queueEvent(new ClusterEvent(_clusterName, clusterEventType));
+      _eventProcessor.queueEvent(changeType, new ClusterViewEvent(_clusterName, changeType));
     } else {
-      LOG.info(String.format("Skip queuing event. EventType: %s, ChangeType: %s, ContextType: %s",
-          clusterEventType.name(), cacheChangeType.name(),
-          context == null ? "NoContext" : context.getType().name()));
+      LOG.info("Skip queuing event from source cluster {}. ChangeType: {}, ContextType: {}",
+          _clusterName, cacheChangeType.name(),
+          context == null ? "NoContext" : context.getType().name());
     }
   }
 

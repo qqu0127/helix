@@ -22,16 +22,17 @@ package org.apache.helix.view.mock;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.helix.api.config.ViewClusterSourceConfig;
-import org.apache.helix.common.ClusterEventProcessor;
+import org.apache.helix.common.DedupEventProcessor;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.LiveInstance;
+import org.apache.helix.view.common.ClusterViewEvent;
 import org.apache.helix.view.dataprovider.SourceClusterDataProvider;
 
 public class MockSourceClusterDataProvider extends SourceClusterDataProvider {
 
   public MockSourceClusterDataProvider(ViewClusterSourceConfig config,
-      ClusterEventProcessor processor) {
+      DedupEventProcessor<ClusterViewEvent.Type, ClusterViewEvent> processor) {
     super(config, processor);
   }
 

@@ -19,7 +19,6 @@ package org.apache.helix.view.mock;
  * under the License.
  */
 
-import java.util.Collections;
 import java.util.List;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
@@ -31,12 +30,10 @@ import org.apache.helix.api.listeners.ExternalViewChangeListener;
 import org.apache.helix.api.listeners.InstanceConfigChangeListener;
 import org.apache.helix.api.listeners.LiveInstanceChangeListener;
 import org.apache.helix.api.listeners.PreFetch;
-import org.apache.helix.controller.stages.ClusterEvent;
-import org.apache.helix.controller.stages.ClusterEventType;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.LiveInstance;
-import org.apache.helix.view.mock.MockClusterEventProcessor;
+import org.apache.helix.view.common.ClusterViewEvent;
 
 /**
  * MockViewClusterSpectator monitors change in view cluster. When event happens, it push event to
@@ -74,24 +71,24 @@ public class MockViewClusterSpectator implements ExternalViewChangeListener,
   @PreFetch(enabled = false)
   public void onExternalViewChange(List<ExternalView> externalViewList,
       NotificationContext changeContext) {
-    _eventProcessor
-        .queueEvent(new ClusterEvent(_viewClusterName, ClusterEventType.ExternalViewChange));
+    _eventProcessor.queueEvent(ClusterViewEvent.Type.ExternalViewChange,
+        new ClusterViewEvent(_viewClusterName, ClusterViewEvent.Type.ExternalViewChange));
   }
 
   @Override
   @PreFetch(enabled = false)
   public void onInstanceConfigChange(List<InstanceConfig> instanceConfigs,
       NotificationContext context) {
-    _eventProcessor
-        .queueEvent(new ClusterEvent(_viewClusterName, ClusterEventType.InstanceConfigChange));
+    _eventProcessor.queueEvent(ClusterViewEvent.Type.InstanceConfigChange,
+        new ClusterViewEvent(_viewClusterName, ClusterViewEvent.Type.InstanceConfigChange));
   }
 
   @Override
   @PreFetch(enabled = false)
   public void onLiveInstanceChange(List<LiveInstance> liveInstances,
       NotificationContext changeContext) {
-    _eventProcessor
-        .queueEvent(new ClusterEvent(_viewClusterName, ClusterEventType.LiveInstanceChange));
+    _eventProcessor.queueEvent(ClusterViewEvent.Type.LiveInstanceChange,
+        new ClusterViewEvent(_viewClusterName, ClusterViewEvent.Type.LiveInstanceChange));
   }
 
   public int getLiveInstanceChangeCount() {

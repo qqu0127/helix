@@ -37,11 +37,9 @@ import org.apache.helix.PropertyType;
 import org.apache.helix.api.config.ViewClusterSourceConfig;
 import org.apache.helix.api.listeners.ClusterConfigChangeListener;
 import org.apache.helix.api.listeners.PreFetch;
-import org.apache.helix.common.ClusterEventProcessor;
-import org.apache.helix.controller.stages.ClusterEvent;
-import org.apache.helix.controller.stages.ClusterEventType;
+import org.apache.helix.common.DedupEventProcessor;
 import org.apache.helix.model.ClusterConfig;
-import org.apache.helix.view.common.ViewAggregatorEventAttributes;
+import org.apache.helix.view.common.ClusterViewEvent;
 import org.apache.helix.view.dataprovider.SourceClusterDataProvider;
 import org.apache.helix.view.monitoring.ViewAggregatorMonitor;
 import org.slf4j.Logger;
@@ -52,18 +50,19 @@ import org.slf4j.LoggerFactory;
  */
 public class HelixViewAggregator implements ClusterConfigChangeListener {
   private static final Logger logger = LoggerFactory.getLogger(HelixViewAggregator.class);
-  private static final int PROCESS_VIEW_CONFIG_CHANGE_BACKOFF_MS = 3 * 1000;
+  private static final long DEFAULT_INITIAL_EVENT_PROCESS_BACKOFF = 10;
+  private static final long DEFAULT_MAX_EVENT_PROCESS_BACKOFF = 5 * 1000;
   private final String _viewClusterName;
   private final HelixManager _viewClusterManager;
   private final Map<String, SourceClusterDataProvider> _dataProviderMap;
   private HelixDataAccessor _dataAccessor;
 
   // Worker that processes source cluster events and refresh view cluster
-  private ClusterEventProcessor _aggregator;
+  private DedupEventProcessor<ClusterViewEvent.Type, ClusterViewEvent> _aggregator;
   private AtomicBoolean _refreshViewCluster;
 
   // Worker that processes view cluster config change
-  private ClusterEventProcessor _viewConfigProcessor;
+  private DedupEventProcessor<ClusterViewEvent.Type, ClusterViewEvent> _viewConfigProcessor;
 
   private ClusterConfig _curViewClusterConfig;
   private Timer _viewClusterRefreshTimer;
@@ -78,17 +77,18 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
             InstanceType.SPECTATOR, zkAddr);
     _refreshViewCluster = new AtomicBoolean(false);
     _monitor = new ViewAggregatorMonitor(viewClusterName);
-    _aggregator = new ClusterEventProcessor(_viewClusterName, "Aggregator") {
+    _aggregator = new DedupEventProcessor<ClusterViewEvent.Type, ClusterViewEvent>(_viewClusterName,
+        "Aggregator") {
       @Override
-      public void handleEvent(ClusterEvent event) {
+      public void handleEvent(ClusterViewEvent event) {
         handleSourceClusterEvent(event);
         _monitor.recordProcessedSourceEvent();
       }
     };
 
-    _viewConfigProcessor = new ClusterEventProcessor(_viewClusterName, "ViewConfigProcessor") {
+    _viewConfigProcessor = new DedupEventProcessor<ClusterViewEvent.Type, ClusterViewEvent>(_viewClusterName, "ViewConfigProcessor") {
       @Override
-      public void handleEvent(ClusterEvent event) {
+      public void handleEvent(ClusterViewEvent event) {
         handleViewClusterConfigChange(event);
       }
     };
@@ -172,8 +172,8 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
   @PreFetch(enabled = false)
   public void onClusterConfigChange(ClusterConfig clusterConfig, NotificationContext context) {
     if (context != null && context.getType() != NotificationContext.Type.FINALIZE) {
-      _viewConfigProcessor
-          .queueEvent(new ClusterEvent(_viewClusterName, ClusterEventType.ClusterConfigChange));
+      _viewConfigProcessor.queueEvent(ClusterViewEvent.Type.ConfigChange,
+          new ClusterViewEvent(_viewClusterName, ClusterViewEvent.Type.ConfigChange));
     } else {
       logger.info(String
           .format("Skip processing view cluster config change with notification context type %s",
@@ -181,17 +181,17 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
     }
   }
 
-  private void handleSourceClusterEvent(ClusterEvent event) {
+  private void handleSourceClusterEvent(ClusterViewEvent event) {
     logger.info(String
         .format("Processing event %s from source cluster %s.", event.getEventType().name(),
             event.getClusterName()));
     switch (event.getEventType()) {
-    case LiveInstanceChange:
-    case InstanceConfigChange:
     case ExternalViewChange:
+    case InstanceConfigChange:
+    case LiveInstanceChange:
       _refreshViewCluster.set(true);
       break;
-    case ViewClusterPeriodicRefresh:
+    case PeriodicViewRefresh:
       if (!_refreshViewCluster.get()) {
         logger.info("Skip refresh: No event happened since last refresh, and no force refresh.");
         return;
@@ -206,34 +206,44 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
     }
   }
 
-  private void handleViewClusterConfigChange(ClusterEvent event) {
+  private void handleViewClusterConfigChange(ClusterViewEvent event) {
     logger.info(String
         .format("Processing event %s for view cluster %s", event.getEventType().name(),
             _viewClusterName));
     switch (event.getEventType()) {
-    case ClusterConfigChange:
-      // TODO: when clusterEventProcessor supports delayed scheduling,
-      // we should not have this head-of-line blocking but to have ClusterEventProcessor do the work.
+    case ConfigChange:
+      // TODO: when DedupEventProcessor supports delayed scheduling,
+      // we should not have this head-of-line blocking but to have DedupEventProcessor do the work.
       // Currently it's acceptable as we can endure delay in processing view cluster config change
-      if (event.getAttribute(ViewAggregatorEventAttributes.EventProcessBackoff.name()) != null) {
-        try {
-          Thread.sleep(PROCESS_VIEW_CONFIG_CHANGE_BACKOFF_MS);
-        } catch (InterruptedException e) {
-          logger.warn("Interrupted when backing off during process view config change retry", e);
-        }
+      try {
+        Thread.sleep(event.getEventProcessBackoff());
+      } catch (InterruptedException e) {
+        logger.warn("Interrupted when backing off during process view config change retry", e);
+        Thread.currentThread().interrupt();
       }
+
       // We always compare current cluster config with most up-to-date cluster config
+      boolean success;
       ClusterConfig newClusterConfig =
           _dataAccessor.getProperty(_dataAccessor.keyBuilder().clusterConfig());
-      SourceClusterConfigChangeAction action =
-          new SourceClusterConfigChangeAction(_curViewClusterConfig, newClusterConfig);
-      action.computeAction();
+
+      if (newClusterConfig == null) {
+        logger.warn("Failed to read view cluster config");
+        success = false;
+      } else {
+        SourceClusterConfigChangeAction action =
+            new SourceClusterConfigChangeAction(_curViewClusterConfig, newClusterConfig);
+        action.computeAction();
+        success = processViewClusterConfigUpdate(action);
+      }
 
       // If we fail to process action and should retry, re-queue event to retry
-      if (!processViewClusterConfigUpdate(action)) {
+      if (!success) {
         _monitor.recordViewConfigProcessFailure();
-        event.addAttribute(ViewAggregatorEventAttributes.EventProcessBackoff.name(), true);
-        _viewConfigProcessor.queueEvent(event);
+        long backoff = computeNextEventProcessBackoff(event.getEventProcessBackoff());
+        logger.info("Failed to process view cluster config change. Will retry in {} ms", backoff);
+        event.setEventProcessBackoff(backoff);
+        _viewConfigProcessor.queueEvent(event.getEventType(), event);
       } else {
         _curViewClusterConfig = newClusterConfig;
       }
@@ -243,12 +253,23 @@ public class HelixViewAggregator implements ClusterConfigChangeListener {
     }
   }
 
+  private long computeNextEventProcessBackoff(long currentBackoff) {
+    if (currentBackoff <= 0) {
+      return DEFAULT_INITIAL_EVENT_PROCESS_BACKOFF;
+    }
+
+    // Exponential backoff with ceiling
+    return currentBackoff * 2 > DEFAULT_MAX_EVENT_PROCESS_BACKOFF
+        ? DEFAULT_MAX_EVENT_PROCESS_BACKOFF
+        : currentBackoff * 2;
+  }
+
   private class RefreshViewClusterTask extends TimerTask {
     @Override
     public void run() {
       logger.info("Triggering view cluster refresh");
-      _aggregator.queueEvent(
-          new ClusterEvent(_viewClusterName, ClusterEventType.ViewClusterPeriodicRefresh));
+      _aggregator.queueEvent(ClusterViewEvent.Type.PeriodicViewRefresh,
+          new ClusterViewEvent(_viewClusterName, ClusterViewEvent.Type.PeriodicViewRefresh));
     }
   }
 

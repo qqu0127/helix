@@ -19,10 +19,11 @@ package org.apache.helix.view.mock;
  * under the License.
  */
 
-import org.apache.helix.common.ClusterEventProcessor;
-import org.apache.helix.controller.stages.ClusterEvent;
+import org.apache.helix.common.DedupEventProcessor;
+import org.apache.helix.view.common.ClusterViewEvent;
 
-public class MockClusterEventProcessor extends ClusterEventProcessor {
+public class MockClusterEventProcessor
+    extends DedupEventProcessor<ClusterViewEvent.Type, ClusterViewEvent> {
   private int _handledClusterConfigChange;
   private int _handledExternalViewChange;
   private int _handledInstanceConfigChange;
@@ -57,9 +58,9 @@ public class MockClusterEventProcessor extends ClusterEventProcessor {
   }
 
   @Override
-  public void handleEvent(ClusterEvent event) {
+  public void handleEvent(ClusterViewEvent event) {
     switch (event.getEventType()) {
-    case ClusterConfigChange:
+    case ConfigChange:
       _handledClusterConfigChange += 1;
       break;
     case LiveInstanceChange:

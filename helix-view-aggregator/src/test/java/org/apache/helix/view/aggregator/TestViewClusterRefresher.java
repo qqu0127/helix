@@ -21,6 +21,7 @@ package org.apache.helix.view.aggregator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,10 +48,8 @@ public class TestViewClusterRefresher {
   private static final int numInstancePerSourceCluster = 2;
   private static final int numExternalViewPerSourceCluster = 3;
   private static final int numPartition = 3;
-  private static final List<PropertyType> defaultProperties = Arrays.asList(
-      new PropertyType[] { PropertyType.LIVEINSTANCES, PropertyType.INSTANCES,
-          PropertyType.EXTERNALVIEW
-      });
+  private static final List<PropertyType> defaultProperties =
+      Arrays.asList(PropertyType.LIVEINSTANCES, PropertyType.INSTANCES, PropertyType.EXTERNALVIEW);
 
   private class CounterBasedMockAccessor extends MockAccessor {
     private int _setCount;
@@ -221,7 +220,7 @@ public class TestViewClusterRefresher {
 
     // remove InstanceConfig and ExternalView requirement from sample provider
     sampleProvider.getConfig()
-        .setProperties(Arrays.asList(new PropertyType[] { PropertyType.LIVEINSTANCES }));
+        .setProperties(Collections.singletonList(PropertyType.LIVEINSTANCES));
 
     // Refresh again
     Assert.assertTrue(refresher.refreshPropertiesInViewCluster(PropertyType.LIVEINSTANCES));
@@ -242,7 +241,7 @@ public class TestViewClusterRefresher {
       MockSourceClusterDataProvider mockProvider = (MockSourceClusterDataProvider) provider;
       if (mockProvider != sampleProvider) {
         mockProvider.getConfig().setProperties(Arrays
-            .asList(new PropertyType[] { PropertyType.LIVEINSTANCES, PropertyType.INSTANCES }));
+            .asList(PropertyType.LIVEINSTANCES, PropertyType.INSTANCES));
       }
     }
 
