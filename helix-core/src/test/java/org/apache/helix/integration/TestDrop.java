@@ -179,6 +179,8 @@ public class TestDrop extends ZkIntegrationTestBase {
         new BestPossibleExternalViewVerifier.Builder(clusterName).setZkAddr(ZK_ADDR).build();
     Assert.assertTrue(verifier.verify());
 
+    Thread.sleep(400);
+
     assertEmptyCSandEV(className, "TestDB0", participants);
 
     // clean up
@@ -371,6 +373,7 @@ public class TestDrop extends ZkIntegrationTestBase {
     verifier =
         new BestPossibleExternalViewVerifier.Builder(clusterName).setZkAddr(ZK_ADDR).build();
     Assert.assertTrue(verifier.verify(), "Should be empty exeternal-view");
+    Thread.sleep(400);
 
     assertEmptyCSandEV(clusterName, "TestDB0", participants);
 
@@ -436,6 +439,8 @@ public class TestDrop extends ZkIntegrationTestBase {
     command = "--zkSvr " + ZK_ADDR + " --dropResource " + clusterName + " schemata";
     ClusterSetup.processCommandLineArgs(command.split("\\s+"));
     Assert.assertTrue(verifier.verify());
+
+    Thread.sleep(400);
 
     assertEmptyCSandEV(clusterName, "schemata", participants);
 
