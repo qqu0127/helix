@@ -85,6 +85,7 @@ public class ClusterDataCache {
   private Map<String, ClusterConstraints> _constraintMap;
   private Map<String, Map<String, String>> _idealStateRuleMap;
   private Map<String, Map<String, Long>> _missingTopStateMap = new HashMap<>();
+  private Map<String, Map<String, String>> _lastTopStateLocationMap = new HashMap<>();
   private Map<String, ExternalView> _targetExternalViewMap = new HashMap<>();
   private Map<String, ExternalView> _externalViewMap = new HashMap<>();
   private Map<String, Map<String, Set<String>>> _disabledInstanceForPartitionMap = new HashMap<>();
@@ -633,6 +634,10 @@ public class ClusterDataCache {
     return _missingTopStateMap;
   }
 
+  public Map<String, Map<String, String>> getLastTopStateLocationMap() {
+    return _lastTopStateLocationMap;
+  }
+
   public Integer getParticipantActiveTaskCount(String instance) {
     return _participantActiveTaskCount.get(instance);
   }
@@ -903,6 +908,7 @@ public class ClusterDataCache {
 
   public void clearMonitoringRecords() {
     _missingTopStateMap.clear();
+    _lastTopStateLocationMap.clear();
   }
 
   /**
