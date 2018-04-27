@@ -19,6 +19,7 @@ package org.apache.helix.view.integration;
  * under the License.
  */
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -26,13 +27,16 @@ import java.util.Set;
 import org.apache.helix.ConfigAccessor;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.HelixException;
+import org.apache.helix.NotificationContext;
 import org.apache.helix.PropertyType;
 import org.apache.helix.api.config.ViewClusterSourceConfig;
 import org.apache.helix.integration.manager.MockParticipantManager;
 import org.apache.helix.manager.zk.ZKHelixAdmin;
 import org.apache.helix.model.ClusterConfig;
-import org.apache.helix.view.aggregator.HelixViewAggregator;
+import org.apache.helix.model.Message;
+import org.apache.helix.participant.statemachine.StateModelParser;
 import org.apache.helix.view.mock.MockViewClusterSpectator;
+import org.apache.helix.view.statemodel.DistViewAggregatorStateModel;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -46,11 +50,13 @@ public class TestHelixViewAggregator extends ViewAggregatorIntegrationTestBase {
   private static final int numReplicaPerResourcePartition = 2;
   private static final String resourceNamePrefix = "testResource";
   private static final String viewClusterName = "ViewCluster-TestHelixViewAggregator";
+  private static final StateModelParser stateModelParser = new StateModelParser();
   private int _viewClusterRefreshPeriodSec = 5;
   private ConfigAccessor _configAccessor;
   private HelixAdmin _helixAdmin;
   private MockViewClusterSpectator _monitor;
   private Set<String> _allResources = new HashSet<>();
+  private DistViewAggregatorStateModel _viewAggregatorStateModel;
 
   @BeforeClass
   public void beforeClass() throws Exception {
@@ -77,6 +83,29 @@ public class TestHelixViewAggregator extends ViewAggregatorIntegrationTestBase {
 
     // Set up view cluster monitor
     _monitor = new MockViewClusterSpectator(viewClusterName, ZK_ADDR);
+
+    _viewAggregatorStateModel = new DistViewAggregatorStateModel(ZK_ADDR);
+    triggerViewAggregatorStateTransition("OFFLINE", "STANDBY");
+  }
+
+  private void triggerViewAggregatorStateTransition(String fromState, String toState)
+      throws Exception {
+    if (!_viewAggregatorStateModel.getCurrentState().equalsIgnoreCase(fromState)) {
+      throw new IllegalStateException(String
+          .format("From state (%s) != current state (%s).", fromState,
+              _viewAggregatorStateModel.getCurrentState()));
+    } else if (_viewAggregatorStateModel.getCurrentState().equalsIgnoreCase(toState)) {
+      return;
+    }
+    NotificationContext context = new NotificationContext(null);
+    Message msg = new Message(Message.MessageType.STATE_TRANSITION, "msgId");
+    msg.setPartitionName(viewClusterName);
+    msg.setFromState(fromState);
+    msg.setToState(toState);
+    Method method = stateModelParser.getMethodForTransition(_viewAggregatorStateModel.getClass(),
+        fromState, toState, new Class[] { Message.class, NotificationContext.class });
+    method.invoke(_viewAggregatorStateModel, msg, context);
+    _viewAggregatorStateModel.updateState(toState);
   }
 
   @AfterClass
@@ -91,8 +120,7 @@ public class TestHelixViewAggregator extends ViewAggregatorIntegrationTestBase {
     _monitor.reset();
 
     // Start view aggregator
-    HelixViewAggregator helixViewAggregator = new HelixViewAggregator(viewClusterName, ZK_ADDR);
-    helixViewAggregator.start();
+    triggerViewAggregatorStateTransition("STANDBY", "LEADER");
 
     // Wait for refresh and verify
     Thread.sleep((_viewClusterRefreshPeriodSec + 2) * 1000);
@@ -147,8 +175,13 @@ public class TestHelixViewAggregator extends ViewAggregatorIntegrationTestBase {
         0);
     _monitor.reset();
 
-    // Simulate view aggregator service down
-    helixViewAggregator.shutdown();
+    // Simulate view aggregator service crashed and got reset
+    triggerViewAggregatorStateTransition("LEADER", "STANDBY");
+    _viewAggregatorStateModel
+        .rollbackOnError(new Message(Message.MessageType.STATE_TRANSITION, "test"),
+            new NotificationContext(null), null);
+    _viewAggregatorStateModel.updateState("ERROR");
+    triggerViewAggregatorStateTransition("ERROR", "OFFLINE");
 
     // Change happened during view aggregator down
     newProperties = new ArrayList<>(ViewClusterSourceConfig.getValidPropertyTypes());
@@ -163,8 +196,8 @@ public class TestHelixViewAggregator extends ViewAggregatorIntegrationTestBase {
     allParticipantNames.remove(participant.getInstanceName());
 
     // Restart helix view aggregator
-    helixViewAggregator = new HelixViewAggregator(viewClusterName, ZK_ADDR);
-    helixViewAggregator.start();
+    triggerViewAggregatorStateTransition("OFFLINE", "STANDBY");
+    triggerViewAggregatorStateTransition("STANDBY", "LEADER");
 
     // Wait for refresh and verify
     Thread.sleep((_viewClusterRefreshPeriodSec + 2) * 1000);
@@ -178,7 +211,7 @@ public class TestHelixViewAggregator extends ViewAggregatorIntegrationTestBase {
     Assert.assertEquals(_monitor.getPropertyNamesFromViewCluster(PropertyType.INSTANCES).size(), 0);
 
     // Stop view aggregator
-    helixViewAggregator.shutdown();
+    triggerViewAggregatorStateTransition("LEADER", "STANDBY");
   }
 
   private void resetViewClusterConfig(int refreshPeriod, List<PropertyType> properties) {
