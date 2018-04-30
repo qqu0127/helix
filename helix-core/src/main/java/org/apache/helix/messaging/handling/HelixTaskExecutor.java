@@ -872,8 +872,8 @@ public class HelixTaskExecutor implements MessageListener, TaskExecutor {
                 "Duplicated state transition message: %s. Existing: %s->%s; New (Discarded): %s->%s",
                 message.getMsgId(), duplicatedMessage.getFromState(),
                 duplicatedMessage.getToState(), message.getFromState(), message.getToState()));
-          }
-          else if (isStateTransitionInProgress(messageTarget)) {
+          } else if (message.getMsgType().equals(MessageType.STATE_TRANSITION.name())
+              && isStateTransitionInProgress(messageTarget)) {
             // If there is another state transition for same partition is going on,
             // discard the message. Controller will resend if this is a valid message
             throw new HelixException(String
