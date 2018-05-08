@@ -209,4 +209,9 @@ public class SourceClusterDataProvider extends BasicClusterDataCache
   private static String generateHelixManagerInstanceName(String clusterName) {
     return String.format("SourceClusterSpectatorHelixManager-%s", clusterName);
   }
+
+  @Override
+  public String toString() {
+    return String.format("%s::%s", getClass().getSimpleName(), hashCode());
+  }
 }
