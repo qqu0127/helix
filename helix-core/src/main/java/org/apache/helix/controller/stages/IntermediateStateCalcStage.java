@@ -54,7 +54,7 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
     if (currentStateOutput == null || bestPossibleStateOutput == null || resourceMap == null
         || cache == null) {
       throw new StageException(String.format("Missing attributes in event: %s. "
-              + "Requires CURRENT_STATE (%s) |BEST_POSSIBLE_STATE (%s) |RESOURCES (%s) |DataCache (%s)",
+          + "Requires CURRENT_STATE (%s) |BEST_POSSIBLE_STATE (%s) |RESOURCES (%s) |DataCache (%s)",
           event, currentStateOutput, bestPossibleStateOutput, resourceMap, cache));
     }
 
@@ -321,7 +321,8 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
     if (clusterConfig.getErrorOrRecoveryPartitionThresholdForLoadBalance() != -1) {
       // ErrorOrRecovery is set
       threshold = clusterConfig.getErrorOrRecoveryPartitionThresholdForLoadBalance();
-      partitionCount += partitionsNeedRecovery.size(); // Only add this count when the threshold is set
+      partitionCount += partitionsNeedRecovery.size(); // Only add this count when the threshold is
+                                                       // set
     } else {
       if (clusterConfig.getErrorPartitionThresholdForLoadBalance() != 0) {
         // 0 is the default value so the old threshold has been set
@@ -329,30 +330,14 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
       }
     }
 
-    // Perform load balance only if the number of partitions in recovery and in error is less than
-    // the threshold
-    if (partitionCount < threshold) {
-      loadbalanceThrottledPartitions = loadRebalance(resource, currentStateOutput,
-          bestPossiblePartitionStateMap, throttleController, intermediatePartitionStateMap,
-          partitionsNeedLoadBalance, currentStateOutput.getCurrentStateMap(resourceName));
-    } else {
-      // Only allow dropping of replicas to happen (dropping does NOT need to be throttled) and skip
-      // load balance for this cycle
-      for (Partition partition : partitionsNeedLoadBalance) {
-        Map<String, String> currentStateMap =
-            currentStateOutput.getCurrentStateMap(resourceName, partition);
-        Map<String, String> bestPossibleMap =
-            bestPossiblePartitionStateMap.getPartitionMap(partition);
-        // Skip load balance by passing current state to intermediate state
-        intermediatePartitionStateMap.setState(partition, currentStateMap);
+    // Perform regular load balance only if the number of partitions in recovery and in error is
+    // less than the threshold. Otherwise, only allow downward-transition load balance
+    boolean onlyDownwardLoadBalance = partitionCount >= threshold;
 
-        // Check if this partition only has downward state transitions; if so, allow state
-        // transitions by setting it at bestPossibleState
-        if (isLoadBalanceDownwardForAllReplicas(currentStateMap, bestPossibleMap, stateModelDef)) {
-          intermediatePartitionStateMap.setState(partition, bestPossibleMap);
-        }
-      }
-    }
+    loadbalanceThrottledPartitions = loadRebalance(resource, currentStateOutput,
+        bestPossiblePartitionStateMap, throttleController, intermediatePartitionStateMap,
+        partitionsNeedLoadBalance, currentStateOutput.getCurrentStateMap(resourceName),
+        onlyDownwardLoadBalance, stateModelDef);
 
     if (clusterStatusMonitor != null) {
       clusterStatusMonitor.updateRebalancerStats(resourceName, partitionsNeedRecovery.size(),
@@ -508,13 +493,16 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
    * @param intermediatePartitionStateMap
    * @param partitionsNeedLoadbalance
    * @param currentStateMap
-   * @return a set of partitions that need to be load-balanced but did not due to throttling
+   * @param onlyDownwardLoadBalance true when only allowing downward transitions
+   * @param stateModelDef for determining whether a partition's transitions are strictly downward
+   * @return
    */
   private Set<Partition> loadRebalance(Resource resource, CurrentStateOutput currentStateOutput,
       PartitionStateMap bestPossiblePartitionStateMap,
       StateTransitionThrottleController throttleController,
       PartitionStateMap intermediatePartitionStateMap, Set<Partition> partitionsNeedLoadbalance,
-      Map<Partition, Map<String, String>> currentStateMap) {
+      Map<Partition, Map<String, String>> currentStateMap, boolean onlyDownwardLoadBalance,
+      StateModelDefinition stateModelDef) {
     String resourceName = resource.getResourceName();
     Set<Partition> partitionsLoadbalanceThrottled = new HashSet<>();
 
@@ -535,6 +523,21 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
         bestPossiblePartitionStateMap.getStateMap(), currentStateMap, "", false));
 
     for (Partition partition : partitionsNeedLoadRebalancePrioritized) {
+      // If this is a downward load balance, check if the partition's transition is strictly
+      // downward
+      if (onlyDownwardLoadBalance) {
+        Map<String, String> currentStateMapForPartition =
+            currentStateOutput.getCurrentStateMap(resourceName, partition);
+        Map<String, String> bestPossibleMapForPartition =
+            bestPossiblePartitionStateMap.getPartitionMap(partition);
+        if (!isLoadBalanceDownwardForAllReplicas(currentStateMapForPartition,
+            bestPossibleMapForPartition, stateModelDef)) {
+          // For downward load balance, if a partition's transitions are not strictly downward,
+          // set currentState to intermediateState
+          intermediatePartitionStateMap.setState(partition, currentStateMapForPartition);
+          continue;
+        }
+      }
       throttleStateTransitionsForPartition(throttleController, resourceName, partition,
           currentStateOutput, bestPossiblePartitionStateMap, partitionsLoadbalanceThrottled,
           intermediatePartitionStateMap, RebalanceType.LOAD_BALANCE);
@@ -588,7 +591,7 @@ public class IntermediateStateCalcStage extends AbstractBaseStage {
             hasReachedThrottlingLimit = true;
             if (logger.isDebugEnabled()) {
               logger.debug(
-                  "Throttled because of instance: {} for partition: {} in resource: {}" + instance,
+                  "Throttled because of instance: {} for partition: {} in resource: {}", instance,
                   partition.getPartitionName(), resourceName);
             }
             break;

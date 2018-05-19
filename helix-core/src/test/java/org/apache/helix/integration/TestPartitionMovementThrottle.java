@@ -362,7 +362,6 @@ public class TestPartitionMovementThrottle extends ZkStandAloneCMTestBase {
         "Throttle condition does not meet for " + throttledItemName);
   }
 
-
   private int size(List<PartitionTransitionTime> timeList) {
     Set<String> partitions = new HashSet<String>();
     for (PartitionTransitionTime p : timeList) {
@@ -382,7 +381,8 @@ public class TestPartitionMovementThrottle extends ZkStandAloneCMTestBase {
       this.end = end;
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
       return "[" +
           "partition='" + partition + '\'' +
           ", start=" + start +
