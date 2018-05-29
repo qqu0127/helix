@@ -143,9 +143,23 @@ public class ClusterConfig extends HelixProperty {
   }
 
   /**
-   * Set task quota type with the ratio of this quota
-   * @param quotaType
-   * @param quotaRatio
+   * Set task quota type with the ratio of this quota.
+   * @param quotaType String
+   * @param quotaRatio int
+   */
+  public void setTaskQuotaRatio(String quotaType, int quotaRatio) {
+    if (_record.getMapField(ClusterConfigProperty.QUOTA_TYPES.name()) == null) {
+      _record.setMapField(ClusterConfigProperty.QUOTA_TYPES.name(), new HashMap<String, String>());
+    }
+    _record.getMapField(ClusterConfigProperty.QUOTA_TYPES.name())
+        .put(quotaType, Integer.toString(quotaRatio));
+  }
+
+  /**
+   * Set task quota type with the ratio of this quota. Quota ratio must be a String that is
+   * parse-able into an int.
+   * @param quotaType String
+   * @param quotaRatio String
    */
   public void setTaskQuotaRatio(String quotaType, String quotaRatio) {
     if (_record.getMapField(ClusterConfigProperty.QUOTA_TYPES.name()) == null) {
@@ -153,6 +167,16 @@ public class ClusterConfig extends HelixProperty {
     }
     _record.getMapField(ClusterConfigProperty.QUOTA_TYPES.name())
         .put(quotaType, quotaRatio);
+  }
+
+  /**
+   * Remove task quota with the given quota type.
+   * @param quotaType
+   */
+  public void removeTaskQuotaRatio(String quotaType) {
+    if (_record.getMapField(ClusterConfigProperty.QUOTA_TYPES.name()) != null) {
+      _record.getMapField(ClusterConfigProperty.QUOTA_TYPES.name()).remove(quotaType);
+    }
   }
 
   /**
@@ -176,6 +200,15 @@ public class ClusterConfig extends HelixProperty {
    */
   public Map<String, String> getTaskQuotaRatioMap() {
     return _record.getMapField(ClusterConfigProperty.QUOTA_TYPES.name());
+  }
+
+  /**
+   * Resets all quota-related information in this ClusterConfig.
+   */
+  public void resetTaskQuotaRatioMap() {
+    if (_record.getMapField(ClusterConfigProperty.QUOTA_TYPES.name()) != null) {
+      _record.getMapField(ClusterConfigProperty.QUOTA_TYPES.name()).clear();
+    }
   }
 
   /**

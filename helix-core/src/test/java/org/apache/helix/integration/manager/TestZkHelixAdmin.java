@@ -52,7 +52,7 @@ public class TestZkHelixAdmin extends TaskTestBase {
   public void beforeClass() throws Exception {
     _numDbs = 1;
     _numNodes = 2;
-    _numParitions = 3;
+    _numPartitions = 3;
     _numReplicas = 2;
     _partitionVary = false;
     _admin = new ZKHelixAdmin(_gZkClient);
