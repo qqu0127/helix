@@ -101,8 +101,9 @@ public class TestAssignableInstanceManager {
       _taskIDs.clear();
     }
 
-    // Create an AssignableInstanceManager
-    _assignableInstanceManager = new AssignableInstanceManager(_clusterConfig, _taskDataCache,
+    // Create an AssignableInstanceManager and build
+    _assignableInstanceManager = new AssignableInstanceManager();
+    _assignableInstanceManager.buildAssignableInstances(_clusterConfig, _taskDataCache,
         _liveInstances, _instanceConfigs);
   }
 
@@ -142,9 +143,11 @@ public class TestAssignableInstanceManager {
     // Check that the assignable instance map contains new instances and there are no
     // TaskAssignResults due to previous live instances being removed
     Assert.assertEquals(_assignableInstanceManager.getTaskAssignResultMap().size(), 0);
-    Assert.assertEquals(_assignableInstanceManager.getAssignableInstanceMap().size(), newLiveInstances.size());
+    Assert.assertEquals(_assignableInstanceManager.getAssignableInstanceMap().size(),
+        newLiveInstances.size());
     for (String instance : newLiveInstances.keySet()) {
-      Assert.assertTrue(_assignableInstanceManager.getAssignableInstanceMap().containsKey(instance));
+      Assert
+          .assertTrue(_assignableInstanceManager.getAssignableInstanceMap().containsKey(instance));
     }
   }
 
