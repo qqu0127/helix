@@ -28,7 +28,11 @@ import org.apache.helix.AccessOption;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.PropertyType;
 import org.apache.helix.ZNRecord;
+import org.apache.helix.model.ClusterConfig;
+import org.apache.helix.model.InstanceConfig;
+import org.apache.helix.model.LiveInstance;
 import org.apache.helix.model.ResourceConfig;
+import org.apache.helix.task.AssignableInstanceManager;
 import org.apache.helix.task.JobConfig;
 import org.apache.helix.task.JobContext;
 import org.apache.helix.task.TaskConstants;
@@ -49,7 +53,13 @@ public class TaskDataCache extends AbstractDataCache {
   private Map<String, JobConfig> _jobConfigMap = new HashMap<>();
   private Map<String, WorkflowConfig> _workflowConfigMap = new HashMap<>();
   private Map<String, ZNRecord> _contextMap = new HashMap<>();
+  // The following fields have been added for quota-based task scheduling
+  private final AssignableInstanceManager _assignableInstanceManager = new AssignableInstanceManager();
 
+  /**
+   * Original constructor for TaskDataCache.
+   * @param clusterName
+   */
   public TaskDataCache(String clusterName) {
     _clusterName = clusterName;
   }
@@ -77,6 +87,28 @@ public class TaskDataCache extends AbstractDataCache {
     }
 
     return true;
+  }
+
+  /**
+   * Refreshes Task Framework contexts and configs from ZooKeeper. This method also re-instantiates
+   * AssignableInstanceManager.
+   * @param accessor
+   * @param resourceConfigMap
+   * @param liveInstanceMap
+   * @param instanceConfigMap
+   * @return
+   */
+  public synchronized boolean refresh(HelixDataAccessor accessor,
+      Map<String, ResourceConfig> resourceConfigMap, ClusterConfig clusterConfig,
+      Map<String, LiveInstance> liveInstanceMap, Map<String, InstanceConfig> instanceConfigMap) {
+    // First, call the original refresh for contexts and configs
+    if (refresh(accessor, resourceConfigMap)) {
+      // Upon refresh success, re-instantiate AssignableInstanceManager from scratch
+      _assignableInstanceManager.buildAssignableInstances(clusterConfig, this, liveInstanceMap,
+          instanceConfigMap);
+      return true;
+    }
+    return false;
   }
 
   private void refreshJobContexts(HelixDataAccessor accessor) {
@@ -206,6 +238,14 @@ public class TaskDataCache extends AbstractDataCache {
    */
   public Map<String, ZNRecord> getContexts() {
     return _contextMap;
+  }
+
+  /**
+   * Returns the current AssignableInstanceManager instance.
+   * @return
+   */
+  public AssignableInstanceManager getAssignableInstanceManager() {
+    return _assignableInstanceManager;
   }
 
   @Override

@@ -26,7 +26,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import org.apache.helix.HelixDataAccessor;
@@ -52,6 +51,7 @@ import org.apache.helix.model.ParticipantHistory;
 import org.apache.helix.model.ResourceAssignment;
 import org.apache.helix.model.ResourceConfig;
 import org.apache.helix.model.StateModelDefinition;
+import org.apache.helix.task.AssignableInstanceManager;
 import org.apache.helix.task.JobConfig;
 import org.apache.helix.task.JobContext;
 import org.apache.helix.task.TaskConstants;
@@ -188,16 +188,12 @@ public class ClusterDataCache {
     }
 
     _liveInstanceMap = new HashMap<>(_liveInstanceCacheMap);
-    _liveInstanceMap = new HashMap(_liveInstanceCacheMap);
+    _liveInstanceMap = new HashMap<>(_liveInstanceCacheMap);
     _instanceConfigMap = new ConcurrentHashMap<>(_instanceConfigCacheMap);
     _resourceConfigMap = new HashMap<>(_resourceConfigCacheMap);
 
     if (_updateInstanceOfflineTime) {
       updateOfflineInstanceHistory(accessor);
-    }
-
-    if (_isTaskCache) {
-      _taskDataCache.refresh(accessor, _resourceConfigMap);
     }
 
     Map<String, StateModelDefinition> stateDefMap =
@@ -206,15 +202,17 @@ public class ClusterDataCache {
     _constraintMap = accessor.getChildValuesMap(keyBuilder.constraints(), true);
     _clusterConfig = accessor.getProperty(keyBuilder.clusterConfig());
 
+    if (_isTaskCache) {
+      _taskDataCache.refresh(accessor, _resourceConfigMap, _clusterConfig, _liveInstanceMap,
+          _instanceConfigMap);
+    }
 
-    _instanceMessagesCache
-        .refresh(accessor, _liveInstanceMap);
+    _instanceMessagesCache.refresh(accessor, _liveInstanceMap);
     _currentStateCache.refresh(accessor, _liveInstanceMap);
 
     // current state must be refreshed before refreshing relay messages
     // because we need to use current state to validate all relay messages.
-    _instanceMessagesCache
-        .updateRelayMessages(_liveInstanceMap, _currentStateCache.getCurrentStatesMap());
+    _instanceMessagesCache.updateRelayMessages(_liveInstanceMap, _currentStateCache.getCurrentStatesMap());
 
     if (_clusterConfig != null) {
       _idealStateRuleMap = _clusterConfig.getIdealStateRules();
@@ -735,6 +733,14 @@ public class ClusterDataCache {
    */
   public Map<String, ZNRecord> getContexts() {
     return _taskDataCache.getContexts();
+  }
+
+  /**
+   * Returns AssignableInstanceManager.
+   * @return
+   */
+  public AssignableInstanceManager getAssignableInstanceManager() {
+    return _taskDataCache.getAssignableInstanceManager();
   }
 
   public ExternalView getTargetExternalView(String resourceName) {
