@@ -29,19 +29,19 @@ import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.PropertyType;
 import org.apache.helix.ZNRecord;
 import org.apache.helix.model.ResourceConfig;
-import org.apache.helix.task.AssignableInstanceManager;
 import org.apache.helix.task.JobConfig;
 import org.apache.helix.task.JobContext;
 import org.apache.helix.task.TaskConstants;
 import org.apache.helix.task.WorkflowConfig;
 import org.apache.helix.task.WorkflowContext;
+import org.apache.helix.controller.LogUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Cache for holding all task related cluster data, such as WorkflowConfig, JobConfig and Contexts.
  */
-public class TaskDataCache {
+public class TaskDataCache extends AbstractDataCache {
   private static final Logger LOG = LoggerFactory.getLogger(TaskDataCache.class.getName());
   private static final String NAME = "NAME";
 
@@ -104,14 +104,15 @@ public class TaskDataCache {
         _contextMap.put(context.getSimpleField(NAME), context);
       } else {
         _contextMap.put(childNames.get(i), context);
-        LOG.debug(
+        LogUtil.logDebug(LOG, getEventId(),
             String.format("Context for %s is null or miss the context NAME!", childNames.get((i))));
       }
     }
 
     if (LOG.isDebugEnabled()) {
-      LOG.debug("# of workflow/job context read from zk: " + _contextMap.size() + ". Take "
-          + (System.currentTimeMillis() - start) + " ms");
+      LogUtil.logDebug(LOG, getEventId(),
+          "# of workflow/job context read from zk: " + _contextMap.size() + ". Take " + (
+              System.currentTimeMillis() - start) + " ms");
     }
   }
 
