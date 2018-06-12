@@ -27,13 +27,13 @@ import org.apache.helix.ConfigAccessor;
 import org.apache.helix.HelixAdmin;
 import org.apache.helix.PropertyType;
 import org.apache.helix.TestHelper;
+import org.apache.helix.api.config.ViewClusterSourceConfig;
 import org.apache.helix.integration.task.MockTask;
 import org.apache.helix.integration.task.TaskTestBase;
 import org.apache.helix.integration.task.WorkflowGenerator;
 import org.apache.helix.manager.zk.ZKHelixAdmin;
 import org.apache.helix.model.ClusterConfig;
 import org.apache.helix.model.IdealState;
-import org.apache.helix.api.config.ViewClusterSourceConfig;
 import org.apache.helix.task.JobConfig;
 import org.apache.helix.task.JobContext;
 import org.apache.helix.task.TaskPartitionState;
@@ -77,6 +77,7 @@ public class TestZkHelixAdmin extends TaskTestBase {
     Assert.assertTrue(fetchedConfig.isViewCluster());
     Assert.assertEquals(fetchedConfig.getViewClusterSourceConfigs().size(), sourceConfigs.size());
     Assert.assertEquals(fetchedConfig.getViewClusterRefershPeriod(), refreshPeriod);
+    _admin.dropCluster(testCluster);
   }
 
   @Test
