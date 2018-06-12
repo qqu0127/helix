@@ -21,13 +21,13 @@ package org.apache.helix.view.integration;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.helix.integration.common.ZkIntegrationTestBase;
+import org.apache.helix.common.ZkTestBase;
 import org.apache.helix.integration.manager.ClusterControllerManager;
 import org.apache.helix.integration.manager.MockParticipantManager;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
-public class ViewAggregatorIntegrationTestBase extends ZkIntegrationTestBase {
+public class ViewAggregatorIntegrationTestBase extends ZkTestBase {
   protected static final int numSourceCluster = 2;
   protected static final int numParticipant = 3;
   protected static final String testSourceClusterNamePrefix = "testSourceCluster";
