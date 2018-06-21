@@ -49,6 +49,7 @@ class RoutingTable {
   private final Map<String, ResourceGroupInfo> _resourceGroupInfoMap;
   private final Collection<LiveInstance> _liveInstances;
   private final Collection<InstanceConfig> _instanceConfigs;
+  private final Collection<ExternalView> _externalViews;
 
   public RoutingTable() {
     this(Collections.<ExternalView>emptyList(), Collections.<InstanceConfig>emptyList(),
@@ -57,6 +58,7 @@ class RoutingTable {
 
   public RoutingTable(Collection<ExternalView> externalViews, Collection<InstanceConfig> instanceConfigs,
       Collection<LiveInstance> liveInstances) {
+    _externalViews = externalViews;
     _resourceInfoMap = new HashMap<>();
     _resourceGroupInfoMap = new HashMap<>();
     _liveInstances = new HashSet<>(liveInstances);
@@ -66,6 +68,7 @@ class RoutingTable {
 
   public RoutingTable(Map<String, Map<String, Map<String, CurrentState>>> currentStateMap,
       Collection<InstanceConfig> instanceConfigs, Collection<LiveInstance> liveInstances) {
+    _externalViews = Collections.emptyList();
     _resourceInfoMap = new HashMap<>();
     _resourceGroupInfoMap = new HashMap<>();
     _liveInstances = liveInstances;
@@ -342,6 +345,14 @@ class RoutingTable {
     }
 
     return Collections.unmodifiableList(instanceList);
+  }
+
+  /**
+   * Returns ExternalViews.
+   * @return a collection of ExternalViews
+   */
+  protected Collection<ExternalView> getExternalViews() {
+    return Collections.unmodifiableCollection(_externalViews);
   }
 
   /**
