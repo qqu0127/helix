@@ -25,7 +25,6 @@ import org.apache.helix.HelixManager;
 /**
  * UserContentStore provides default implementation of user defined key-value pair store per task,
  * job and workflow level.
- *
  * TODO: This class should be merged to Task interface when Helix bump up to Java 8
  */
 public abstract class UserContentStore {
@@ -47,10 +46,10 @@ public abstract class UserContentStore {
     TASK
   }
 
-  private HelixManager _manager;
-  private String _workflowName;
-  private String _jobName;
-  private String _taskName;
+  protected HelixManager _manager;
+  protected String _workflowName;
+  protected String _jobName;
+  protected String _taskName;
 
   /**
    * Default initialization of user content store
@@ -67,7 +66,9 @@ public abstract class UserContentStore {
   }
 
   /**
-   * Default implementation for user defined put key-value pair
+   * Default implementation for user defined put key-value pair. Warning: this method is not
+   * thread-safe - we recommend creating a different key-value pair instead of modifying the value
+   * on the same key.
    * @param key The key of key-value pair
    * @param value The value of key-value pair
    * @param scope The scope defines which layer to store
@@ -89,22 +90,16 @@ public abstract class UserContentStore {
   }
 
   /**
-   * Default implementation for user defined get key-value pair
+   * Default implementation for user defined get key-value pair. Warning: this method is not
+   * thread-safe - we recommend creating a different key-value pair instead of modifying the value
+   * on the same key.
    * @param key The key of key-value pair
    * @param scope The scope defines which layer that key-value pair stored
    * @return Null if key-value pair not found or this content store does not exists. Otherwise,
    *         return a String
    */
   public String getUserContent(String key, Scope scope) {
-    switch (scope) {
-    case WORKFLOW:
-      return TaskUtil.getWorkflowJobUserContent(_manager, _workflowName, key);
-    case JOB:
-      return TaskUtil.getWorkflowJobUserContent(_manager, _jobName, key);
-    case TASK:
-      return TaskUtil.getTaskUserContent(_manager, _jobName, _taskName, key);
-    default:
-      throw new HelixException("Invalid scope : " + scope.name());
-    }
+    return TaskUtil.getUserContent(_manager.getHelixPropertyStore(), key, scope, _workflowName,
+        _jobName, _taskName);
   }
 }
