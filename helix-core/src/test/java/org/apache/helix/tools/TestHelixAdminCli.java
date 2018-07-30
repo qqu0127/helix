@@ -104,7 +104,7 @@ public class TestHelixAdminCli extends ZkTestBase {
     Assert.assertFalse(_gZkClient.exists("/clusterTest1"));
   }
 
-  @Test
+  @Test (dependsOnMethods = "testAddCluster")
   public void testAddResource() throws Exception {
     String command = "-zkSvr localhost:2183 -addCluster " + clusterName;
     ClusterSetup.processCommandLineArgs(command.split("\\s+"));
@@ -129,7 +129,7 @@ public class TestHelixAdminCli extends ZkTestBase {
     ClusterSetup.processCommandLineArgs(command.split("\\s+"));
   }
 
-  @Test
+  @Test (dependsOnMethods = "testAddResource")
   public void testAddInstance() throws Exception {
     String command = "-zkSvr localhost:2183 -addCluster " + clusterName;
     ClusterSetup.processCommandLineArgs(command.split("\\s+"));
@@ -179,7 +179,7 @@ public class TestHelixAdminCli extends ZkTestBase {
     }
   }
 
-  @Test
+  @Test (dependsOnMethods = "testAddInstance")
   public void testRebalanceResource() throws Exception {
     String command = "-zkSvr localhost:2183 -addCluster " + clusterName;
     ClusterSetup.processCommandLineArgs(command.split("\\s+"));
@@ -210,7 +210,7 @@ public class TestHelixAdminCli extends ZkTestBase {
     ClusterSetup.processCommandLineArgs(command.split("\\s+"));
   }
 
-  @Test
+  @Test (dependsOnMethods = "testRebalanceResource")
   public void testStartCluster() throws Exception {
     final int n = 6;
 
@@ -293,7 +293,7 @@ public class TestHelixAdminCli extends ZkTestBase {
     }
   }
 
-  @Test
+  @Test (dependsOnMethods = "testStartCluster")
   public void testDropAddResource() throws Exception {
     final int n = 6;
 
@@ -397,7 +397,7 @@ public class TestHelixAdminCli extends ZkTestBase {
     Thread.sleep(100);
   }
 
-  @Test
+  @Test (dependsOnMethods = "testDropAddResource")
   public void testInstanceOperations() throws Exception {
     final int n = 6;
 
@@ -468,7 +468,7 @@ public class TestHelixAdminCli extends ZkTestBase {
     }
   }
 
-  @Test
+  @Test (dependsOnMethods = "testInstanceOperations")
   public void testExpandCluster() throws Exception {
     final int n = 6;
 
@@ -519,7 +519,7 @@ public class TestHelixAdminCli extends ZkTestBase {
     }
   }
 
-  @Test
+  @Test (dependsOnMethods = "testExpandCluster")
   public void testDeactivateCluster() throws Exception {
     final int n = 6;
 
@@ -576,7 +576,7 @@ public class TestHelixAdminCli extends ZkTestBase {
     ClusterSetup.processCommandLineArgs(command.split("\\s+"));
   }
 
-  @Test
+  @Test (dependsOnMethods = "testDeactivateCluster")
   public void testInstanceGroupTags() throws Exception {
     BaseDataAccessor<ZNRecord> baseAccessor = new ZkBaseDataAccessor<ZNRecord>(_gZkClient);
     HelixDataAccessor accessor = new ZKHelixDataAccessor(clusterName, baseAccessor);
