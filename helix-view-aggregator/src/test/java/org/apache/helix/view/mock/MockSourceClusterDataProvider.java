@@ -41,21 +41,21 @@ public class MockSourceClusterDataProvider extends SourceClusterDataProvider {
     }
 
     public void setExternalView(List<ExternalView> externalViews) {
-      Map<String, ExternalView> evMap = new HashMap();
+      Map<String, ExternalView> evMap = new HashMap<>();
       for (ExternalView ev : externalViews) {
         evMap.put(ev.getId(), ev);
       }
-      _externalViewCache = evMap;
+      // Set _externalViewMap instead of _externalViewCache as we serve ExternalViewCache
+      // APIs using data inside the map
+      _externalViewMap = evMap;
     }
   }
 
   public MockSourceClusterDataProvider(ViewClusterSourceConfig config,
       DedupEventProcessor<ClusterViewEvent.Type, ClusterViewEvent> processor) {
     super(config, processor);
-    _mockExternalViewCache = new MockExternalViewCache("Test");
+    _externalViewCache = new MockExternalViewCache("Test");
   }
-
-  private MockExternalViewCache _mockExternalViewCache;
 
   @Override
   public void setup() {}
@@ -99,6 +99,6 @@ public class MockSourceClusterDataProvider extends SourceClusterDataProvider {
   }
 
   public void setExternalViews(List<ExternalView> externalViewList) {
-    _mockExternalViewCache.setExternalView(externalViewList);
+    ((MockExternalViewCache) _externalViewCache).setExternalView(externalViewList);
   }
 }
