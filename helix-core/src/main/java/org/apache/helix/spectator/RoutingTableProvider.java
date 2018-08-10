@@ -120,6 +120,7 @@ public class RoutingTableProvider
     } catch (JMException e) {
       logger.error("Failed to register RoutingTableProvider monitor MBean.", e);
     }
+    _reportExecutor = Executors.newSingleThreadExecutor();
 
     _routerUpdater = new RouterUpdater(clusterName, _sourceDataType);
     _routerUpdater.start();
@@ -198,8 +199,6 @@ public class RoutingTableProvider
     } else {
       _isPeriodicRefreshEnabled = false;
     }
-
-    _reportExecutor = Executors.newSingleThreadExecutor();
   }
 
   /**
