@@ -230,20 +230,21 @@ public class TaskDataCache extends AbstractDataCache {
     }
 
     // Delete contexts
+    // We can not leave the context here since some of the deletion happens for cleaning workflow
+    // If we leave it in the memory, Helix will not allow user create it with same name.
+    // TODO: Let's have periodical clean up thread that could remove deletion failed contexts.
     List<String> contextPathsToRemove = new ArrayList<>();
     List<String> contextNamesToRemove = new ArrayList<>(_contextToRemove);
     for (String resourceName : contextNamesToRemove) {
-        contextPathsToRemove.add(getContextPath(resourceName));
+      contextPathsToRemove.add(getContextPath(resourceName));
     }
 
-    boolean[] removeSuccess =
-        accessor.getBaseDataAccessor().remove(contextPathsToRemove, AccessOption.PERSISTENT);
+    // TODO: current behavior is when you delete non-existing data will return false.
+    // Once the behavior fixed, we can add retry logic back. Otherwise, it will stay in memory and
+    // not allow same workflow name recreation.
+    accessor.getBaseDataAccessor().remove(contextPathsToRemove, AccessOption.PERSISTENT);
 
-    for (int i = 0; i < removeSuccess.length; i++) {
-      if (removeSuccess[i]) {
-        _contextToRemove.remove(contextNamesToRemove.get(i));
-      }
-    }
+    _contextToRemove.clear();
   }
 
   /**
