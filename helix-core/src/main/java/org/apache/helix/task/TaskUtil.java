@@ -19,7 +19,6 @@ package org.apache.helix.task;
  * under the License.
  */
 
-import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,16 +37,16 @@ import org.apache.helix.PropertyKey;
 import org.apache.helix.ZNRecord;
 import org.apache.helix.controller.rebalancer.util.RebalanceScheduler;
 import org.apache.helix.model.HelixConfigScope;
-import org.apache.helix.model.IdealState;
 import org.apache.helix.model.ResourceConfig;
 import org.apache.helix.model.builder.HelixConfigScopeBuilder;
 import org.apache.helix.store.HelixPropertyStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.Sets;
 
 /**
  * Static utility methods.
@@ -335,10 +334,19 @@ public class TaskUtil {
    */
   protected static void addWorkflowJobUserContent(final HelixManager manager,
       String workflowJobResource, final String key, final String value) {
-    String path = Joiner.on("/").join(TaskConstants.REBALANCER_CONTEXT_ROOT, workflowJobResource,
-        USER_CONTENT_NODE);
+   addWorkflowJobUserContent(manager.getHelixPropertyStore(), workflowJobResource, key, value);
+  }
 
-    manager.getHelixPropertyStore().update(path, new DataUpdater<ZNRecord>() {
+  /* package */
+  static void addWorkflowJobUserContent(final HelixPropertyStore<ZNRecord> propertyStore,
+      String workflowJobResource, final String key, final String value) {
+    if (workflowJobResource == null) {
+      throw new IllegalArgumentException("workflowJobResource must be not null when adding workflow / job user content");
+    }
+    String path = Joiner.on("/")
+        .join(TaskConstants.REBALANCER_CONTEXT_ROOT, workflowJobResource, USER_CONTENT_NODE);
+
+    propertyStore.update(path, new DataUpdater<ZNRecord>() {
       @Override
       public ZNRecord update(ZNRecord znRecord) {
         znRecord.setSimpleField(key, value);
@@ -373,10 +381,19 @@ public class TaskUtil {
    */
   protected static void addTaskUserContent(final HelixManager manager, String job,
       final String task, final String key, final String value) {
+    addTaskUserContent(manager.getHelixPropertyStore(), job, task, key, value);
+  }
+
+  /* package */
+  static void addTaskUserContent(final HelixPropertyStore<ZNRecord> propertyStore,
+      final String job, final String task, final String key, final String value) {
+    if (job == null || task == null) {
+      throw new IllegalArgumentException("job and task must be not null when adding task user content");
+    }
     String path =
         Joiner.on("/").join(TaskConstants.REBALANCER_CONTEXT_ROOT, job, USER_CONTENT_NODE);
 
-    manager.getHelixPropertyStore().update(path, new DataUpdater<ZNRecord>() {
+    propertyStore.update(path, new DataUpdater<ZNRecord>() {
       @Override
       public ZNRecord update(ZNRecord znRecord) {
         if (znRecord.getMapField(task) == null) {
