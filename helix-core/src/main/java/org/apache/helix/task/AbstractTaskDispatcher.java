@@ -300,7 +300,8 @@ public abstract class AbstractTaskDispatcher {
         currentStateOutput.getCurrentState(jobResource, new Partition(pName), instance);
     if (currentStateString == null) {
       // Task state is either DROPPED or INIT
-      return jobCtx.getPartitionState(pId);
+      TaskPartitionState stateFromContext = jobCtx.getPartitionState(pId);
+      return stateFromContext == null ? TaskPartitionState.INIT : stateFromContext;
     }
     TaskPartitionState currentState = TaskPartitionState.valueOf(currentStateString);
     jobCtx.setPartitionState(pId, currentState);
