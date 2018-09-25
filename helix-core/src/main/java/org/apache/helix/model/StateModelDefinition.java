@@ -143,7 +143,7 @@ public class StateModelDefinition extends HelixProperty {
    */
   void addDefaultTransition(String from, String to, String next) {
     if (!_stateTransitionTable.containsKey(from)) {
-      _stateTransitionTable.put(from, new TreeMap<>());
+      _stateTransitionTable.put(from, new TreeMap<String, String>());
     }
 
     if (!_stateTransitionTable.get(from).containsKey(to)) {
