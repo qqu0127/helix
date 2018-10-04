@@ -274,7 +274,7 @@ public class WorkflowAccessor extends AbstractHelixResource {
     TaskDriver taskDriver = getTaskDriver(clusterId);
     try {
       Map<String, String> contentStore =
-          taskDriver.getUserContentMap(UserContentStore.Scope.WORKFLOW, workflowId, null, null);
+          taskDriver.getWorkflowUserContentMap(workflowId);
       if (contentStore == null) {
         return JSONRepresentation(Collections.emptyMap());
       }
@@ -308,17 +308,13 @@ public class WorkflowAccessor extends AbstractHelixResource {
     }
 
     TaskDriver driver = getTaskDriver(clusterId);
-    // TODO (harry): consolidate task driver interface and update entries in batch
     try {
       switch (cmd) {
       case update:
-        for (Map.Entry<String, String> entry : contentMap.entrySet()) {
-          driver.addUserContent(entry.getKey(), entry.getValue(), workflowId, null, null,
-              UserContentStore.Scope.WORKFLOW);
-        }
+        driver.addOrUpdateWorkflowUserContentMap(workflowId, contentMap);
         return OK();
       default:
-        return badRequest(String.format("Command must be \"update\", but got %s", cmd));
+        return badRequest(String.format("Command \"%s\" is not supported!", cmd));
       }
     } catch (Exception e) {
       _logger.error("Failed to update user content store", e);
