@@ -73,7 +73,7 @@ public class TestClusterDataCacheSelectiveUpdate extends ZkStandAloneCMTestBase 
     cache.notifyDataChange(HelixConstants.ChangeType.LIVE_INSTANCE);
     cache.refresh(accessor);
     Assert.assertEquals(accessor.getReadCount(PropertyType.IDEALSTATES), 0);
-    Assert.assertEquals(accessor.getReadCount(PropertyType.LIVEINSTANCES), 0);
+    Assert.assertEquals(accessor.getReadCount(PropertyType.LIVEINSTANCES), NODE_NR);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CURRENTSTATES), 0);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CONFIGS), 1);
   }

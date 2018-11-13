@@ -38,10 +38,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Cache to hold all ExternalViews of a cluster.
- * Deprecated - use {@link PropertyCache<ExternalView>} instead
  */
-@Deprecated
-public class ExternalViewCache extends AbstractDataCache<ExternalView> {
+public class ExternalViewCache extends AbstractDataCache {
   private static final Logger LOG = LoggerFactory.getLogger(ExternalViewCache.class.getName());
 
   protected Map<String, ExternalView> _externalViewMap;
