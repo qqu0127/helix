@@ -154,7 +154,7 @@ public class ClusterDataCache {
       public String getObjName(ExternalView obj) {
         return obj.getResourceName();
       }
-    }, false);
+    }, true);
     _targetExternalViewCache = new PropertyCache<>(_clusterName, "TargetExternalView", new PropertyCache.PropertyCacheKeyFuncs<ExternalView>() {
       @Override
       public PropertyKey getRootKey(HelixDataAccessor accessor) {
@@ -170,7 +170,7 @@ public class ClusterDataCache {
       public String getObjName(ExternalView obj) {
         return obj.getResourceName();
       }
-    }, false);
+    }, true);
     _resourceConfigCache = new PropertyCache<>(_clusterName, "ResourceConfig", new PropertyCache.PropertyCacheKeyFuncs<ResourceConfig>() {
       @Override
       public PropertyKey getRootKey(HelixDataAccessor accessor) {
@@ -202,7 +202,7 @@ public class ClusterDataCache {
       public String getObjName(LiveInstance obj) {
         return obj.getInstanceName();
       }
-    }, false);
+    }, true);
     _instanceConfigCache = new PropertyCache<>(_clusterName, "InstanceConfig", new PropertyCache.PropertyCacheKeyFuncs<InstanceConfig>() {
       @Override
       public PropertyKey getRootKey(HelixDataAccessor accessor) {
@@ -218,7 +218,7 @@ public class ClusterDataCache {
       public String getObjName(InstanceConfig obj) {
         return obj.getInstanceName();
       }
-    }, false);
+    }, true);
     _idealStateCache = new PropertyCache<>(_clusterName, "IdealState", new PropertyCache.PropertyCacheKeyFuncs<IdealState>() {
       @Override
       public PropertyKey getRootKey(HelixDataAccessor accessor) {
