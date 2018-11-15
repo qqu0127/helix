@@ -39,6 +39,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.helix.controller.stages.BestPossibleStateOutput;
+import org.apache.helix.controller.stages.ClusterDataCache;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.InstanceConfig;
@@ -549,18 +550,19 @@ public class ClusterStatusMonitor implements ClusterStatusMonitorMBean {
     }
   }
 
-  public void refreshWorkflowsStatus(TaskDriver driver) {
+  public void refreshWorkflowsStatus(ClusterDataCache cache) {
     for (WorkflowMonitor workflowMonitor : _perTypeWorkflowMonitorMap.values()) {
       workflowMonitor.resetGauges();
     }
 
-    Map<String, WorkflowConfig> workflowConfigMap = driver.getWorkflows();
+    Map<String, WorkflowConfig> workflowConfigMap = cache.getWorkflowConfigMap();
     for (String workflow : workflowConfigMap.keySet()) {
       if (workflowConfigMap.get(workflow).isRecurring() || workflow.isEmpty()) {
         continue;
       }
-      WorkflowContext workflowContext = driver.getWorkflowContext(workflow);
-      TaskState currentState = workflowContext == null ? TaskState.NOT_STARTED : workflowContext.getWorkflowState();
+      WorkflowContext workflowContext = cache.getWorkflowContext(workflow);
+      TaskState currentState =
+          workflowContext == null ? TaskState.NOT_STARTED : workflowContext.getWorkflowState();
       updateWorkflowGauges(workflowConfigMap.get(workflow), currentState);
     }
   }
@@ -597,23 +599,25 @@ public class ClusterStatusMonitor implements ClusterStatusMonitorMBean {
     return workflowType;
   }
 
-  public void refreshJobsStatus(TaskDriver driver) {
+  public void refreshJobsStatus(ClusterDataCache cache) {
     for (JobMonitor jobMonitor : _perTypeJobMonitorMap.values()) {
       jobMonitor.resetJobGauge();
     }
-    for (String workflow : driver.getWorkflows().keySet()) {
+    for (String workflow : cache.getWorkflowConfigMap().keySet()) {
       if (workflow.isEmpty()) {
         continue;
       }
-      WorkflowConfig workflowConfig = driver.getWorkflowConfig(workflow);
+      WorkflowConfig workflowConfig = cache.getWorkflowConfig(workflow);
       if (workflowConfig == null) {
         continue;
       }
       Set<String> allJobs = workflowConfig.getJobDag().getAllNodes();
-      WorkflowContext workflowContext = driver.getWorkflowContext(workflow);
+      WorkflowContext workflowContext = cache.getWorkflowContext(workflow);
       for (String job : allJobs) {
-        TaskState currentState = workflowContext == null ? TaskState.NOT_STARTED : workflowContext.getJobState(job);
-        updateJobGauges(workflowConfig.getJobTypes() == null ? null : workflowConfig.getJobTypes().get(job),
+        TaskState currentState =
+            workflowContext == null ? TaskState.NOT_STARTED : workflowContext.getJobState(job);
+        updateJobGauges(
+            workflowConfig.getJobTypes() == null ? null : workflowConfig.getJobTypes().get(job),
             currentState);
       }
     }
