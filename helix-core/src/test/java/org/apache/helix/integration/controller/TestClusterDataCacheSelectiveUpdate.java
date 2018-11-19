@@ -46,7 +46,6 @@ public class TestClusterDataCacheSelectiveUpdate extends ZkStandAloneCMTestBase 
     cache.refresh(accessor);
 
     Assert.assertEquals(accessor.getReadCount(PropertyType.IDEALSTATES), 1);
-    Assert.assertEquals(accessor.getReadCount(PropertyType.EXTERNALVIEW), 1);
     Assert.assertEquals(accessor.getReadCount(PropertyType.LIVEINSTANCES), NODE_NR);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CURRENTSTATES), NODE_NR);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CONFIGS), NODE_NR + 1);
@@ -56,7 +55,6 @@ public class TestClusterDataCacheSelectiveUpdate extends ZkStandAloneCMTestBase 
     // refresh again should read nothing
     cache.refresh(accessor);
     Assert.assertEquals(accessor.getReadCount(PropertyType.IDEALSTATES), 0);
-    Assert.assertEquals(accessor.getReadCount(PropertyType.EXTERNALVIEW), 0);
     Assert.assertEquals(accessor.getReadCount(PropertyType.LIVEINSTANCES), 0);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CURRENTSTATES), 0);
     // cluster config always get reloaded
@@ -67,7 +65,6 @@ public class TestClusterDataCacheSelectiveUpdate extends ZkStandAloneCMTestBase 
     cache.notifyDataChange(HelixConstants.ChangeType.IDEAL_STATE);
     cache.refresh(accessor);
     Assert.assertEquals(accessor.getReadCount(PropertyType.IDEALSTATES), 0);
-    Assert.assertEquals(accessor.getReadCount(PropertyType.EXTERNALVIEW), 0);
     Assert.assertEquals(accessor.getReadCount(PropertyType.LIVEINSTANCES), 0);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CURRENTSTATES), 0);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CONFIGS), 1);
@@ -76,8 +73,7 @@ public class TestClusterDataCacheSelectiveUpdate extends ZkStandAloneCMTestBase 
     cache.notifyDataChange(HelixConstants.ChangeType.LIVE_INSTANCE);
     cache.refresh(accessor);
     Assert.assertEquals(accessor.getReadCount(PropertyType.IDEALSTATES), 0);
-    Assert.assertEquals(accessor.getReadCount(PropertyType.EXTERNALVIEW), 0);
-    Assert.assertEquals(accessor.getReadCount(PropertyType.LIVEINSTANCES), 0);
+    Assert.assertEquals(accessor.getReadCount(PropertyType.LIVEINSTANCES), NODE_NR);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CURRENTSTATES), 0);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CONFIGS), 1);
   }
@@ -92,7 +88,6 @@ public class TestClusterDataCacheSelectiveUpdate extends ZkStandAloneCMTestBase 
     cache.refresh(accessor);
 
     Assert.assertEquals(accessor.getReadCount(PropertyType.IDEALSTATES), 1);
-    Assert.assertEquals(accessor.getReadCount(PropertyType.EXTERNALVIEW), 1);
     Assert.assertEquals(accessor.getReadCount(PropertyType.LIVEINSTANCES), NODE_NR);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CURRENTSTATES), NODE_NR);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CONFIGS), NODE_NR + 1);
@@ -102,7 +97,6 @@ public class TestClusterDataCacheSelectiveUpdate extends ZkStandAloneCMTestBase 
     // refresh again should read nothing
     cache.refresh(accessor);
     Assert.assertEquals(accessor.getReadCount(PropertyType.IDEALSTATES), 0);
-    Assert.assertEquals(accessor.getReadCount(PropertyType.EXTERNALVIEW), 0);
     Assert.assertEquals(accessor.getReadCount(PropertyType.LIVEINSTANCES), 0);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CURRENTSTATES), 0);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CONFIGS), 1);
@@ -121,7 +115,6 @@ public class TestClusterDataCacheSelectiveUpdate extends ZkStandAloneCMTestBase 
     cache.refresh(accessor);
     Assert.assertEquals(accessor.getReadCount(PropertyType.CURRENTSTATES), NODE_NR);
     Assert.assertEquals(accessor.getReadCount(PropertyType.IDEALSTATES), 1);
-    Assert.assertEquals(accessor.getReadCount(PropertyType.EXTERNALVIEW), 0);
 
     // Add more resources
     accessor.clearReadCounters();
@@ -135,7 +128,6 @@ public class TestClusterDataCacheSelectiveUpdate extends ZkStandAloneCMTestBase 
     cache.notifyDataChange(HelixConstants.ChangeType.IDEAL_STATE);
     cache.refresh(accessor);
     Assert.assertEquals(accessor.getReadCount(PropertyType.IDEALSTATES), 2);
-    Assert.assertEquals(accessor.getReadCount(PropertyType.EXTERNALVIEW), 0);
 
     // Test WorkflowConfig/JobConfigs
     TaskDriver driver = new TaskDriver(_manager);

@@ -37,10 +37,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Cache to hold all IdealStates of a cluster.
- * Deprecated - use {@link PropertyCache<IdealState>} instead
  */
-@Deprecated
-public class IdealStateCache extends AbstractDataCache<IdealState> {
+public class IdealStateCache extends AbstractDataCache {
   private static final Logger LOG = LoggerFactory.getLogger(IdealStateCache.class.getName());
 
   private Map<String, IdealState> _idealStateMap;
