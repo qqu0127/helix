@@ -38,8 +38,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.helix.controller.WorkflowControllerDataProvider;
 import org.apache.helix.controller.stages.BestPossibleStateOutput;
-import org.apache.helix.controller.stages.ClusterDataCache;
 import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.IdealState;
 import org.apache.helix.model.InstanceConfig;
@@ -48,7 +48,6 @@ import org.apache.helix.model.Partition;
 import org.apache.helix.model.Resource;
 import org.apache.helix.model.StateModelDefinition;
 import org.apache.helix.task.JobConfig;
-import org.apache.helix.task.TaskDriver;
 import org.apache.helix.task.TaskState;
 import org.apache.helix.task.WorkflowConfig;
 import org.apache.helix.task.WorkflowContext;
@@ -550,7 +549,7 @@ public class ClusterStatusMonitor implements ClusterStatusMonitorMBean {
     }
   }
 
-  public void refreshWorkflowsStatus(ClusterDataCache cache) {
+  public void refreshWorkflowsStatus(WorkflowControllerDataProvider cache) {
     for (WorkflowMonitor workflowMonitor : _perTypeWorkflowMonitorMap.values()) {
       workflowMonitor.resetGauges();
     }
@@ -599,7 +598,7 @@ public class ClusterStatusMonitor implements ClusterStatusMonitorMBean {
     return workflowType;
   }
 
-  public void refreshJobsStatus(ClusterDataCache cache) {
+  public void refreshJobsStatus(WorkflowControllerDataProvider cache) {
     for (JobMonitor jobMonitor : _perTypeJobMonitorMap.values()) {
       jobMonitor.resetJobGauge();
     }
