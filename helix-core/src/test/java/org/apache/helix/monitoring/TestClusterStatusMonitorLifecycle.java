@@ -203,7 +203,7 @@ public class TestClusterStatusMonitorLifecycle extends ZkTestBase {
         mbeans.addAll(newMbeans);
         return newMbeans.size() == (previousMBeanCount - 2);
       }
-    }, 10000));
+    }, 3000));
 
     HelixDataAccessor accessor = _participants[n - 1].getHelixDataAccessor();
     String firstControllerName =
@@ -217,8 +217,13 @@ public class TestClusterStatusMonitorLifecycle extends ZkTestBase {
     }
     firstController.disconnect();
 
+    ZkHelixClusterVerifier controllerClusterVerifier =
+        new BestPossibleExternalViewVerifier.Builder(_controllerClusterName).setZkClient(_gZkClient)
+            .build();
+    Assert.assertTrue(controllerClusterVerifier.verifyByPolling(), "Controller cluster was not converged");
+
     // 1 controller goes away
-    // 1 message queue mbean, 1 PerInstanceResource mbean, and one message queue mbean
+    // 1 message queue mbean, 1 PerInstanceResource mbean, and one event mbean
     final int previousMBeanCount2 = mbeans.size();
     Assert.assertTrue(TestHelper.verify(new TestHelper.Verifier() {
       @Override public boolean verify() throws Exception {
@@ -228,7 +233,7 @@ public class TestClusterStatusMonitorLifecycle extends ZkTestBase {
         mbeans.addAll(newMbeans);
         return newMbeans.size() == (previousMBeanCount2 - 3);
       }
-    }, 10000));
+    }, 5000));
 
     String instanceName = "localhost0_" + (12918 + 0);
     _participants[0] = new MockParticipantManager(ZK_ADDR, _firstClusterName, instanceName);
@@ -246,7 +251,7 @@ public class TestClusterStatusMonitorLifecycle extends ZkTestBase {
         mbeans.addAll(newMbeans);
         return newMbeans.size() == (previousMBeanCount3 + 2);
       }
-    }, 10000));
+    }, 3000));
 
     // Add a resource
     // Register 1 resource mbean
@@ -269,7 +274,7 @@ public class TestClusterStatusMonitorLifecycle extends ZkTestBase {
         mbeans.addAll(newMbeans);
         return newMbeans.size() == (previousMBeanCount4 + _participants.length + 1);
       }
-    }, 10000));
+    }, 3000));
 
     // Remove a resource
     // No change in instance/resource mbean
@@ -285,7 +290,7 @@ public class TestClusterStatusMonitorLifecycle extends ZkTestBase {
         mbeans.addAll(newMbeans);
         return newMbeans.size() == (previousMBeanCount5 - (_participants.length + 1));
       }
-    }, 10000));
+    }, 3000));
 
     // Cleanup controllers then MBeans should all be removed.
     cleanupControllers();
@@ -300,6 +305,6 @@ public class TestClusterStatusMonitorLifecycle extends ZkTestBase {
         return ManagementFactory.getPlatformMBeanServer()
             .queryMBeans(new ObjectName("ClusterStatus:*"), exp2).isEmpty();
       }
-    }, 10000));
+    }, 3000));
   }
 }
