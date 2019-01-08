@@ -28,7 +28,6 @@ import org.I0Itec.zkclient.IZkChildListener;
 import org.I0Itec.zkclient.IZkConnection;
 import org.I0Itec.zkclient.IZkDataListener;
 import org.I0Itec.zkclient.IZkStateListener;
-import org.I0Itec.zkclient.ZkConnection;
 import org.I0Itec.zkclient.ZkLock;
 import org.I0Itec.zkclient.exception.ZkBadVersionException;
 import org.I0Itec.zkclient.exception.ZkException;
@@ -821,9 +820,8 @@ public class ZkClient implements Watcher {
   private void reconnect() {
     getEventLock().lock();
     try {
-      IZkConnection connection = getConnection();
-      connection.close();
-      connection.connect(this);
+      ZkConnection connection = ((ZkConnection) getConnection());
+      connection.reconnect(this);
     } catch (InterruptedException e) {
       throw new ZkInterruptedException(e);
     } finally {
