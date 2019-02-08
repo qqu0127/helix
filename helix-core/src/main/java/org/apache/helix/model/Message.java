@@ -906,11 +906,10 @@ public class Message extends HelixProperty {
     // implement this function separately
 
     if (getMsgType().equals(MessageType.STATE_TRANSITION.name())) {
-      boolean isNotValid =
-          isNullOrEmpty(getTgtName()) || isNullOrEmpty(getPartitionName())
-              || isNullOrEmpty(getResourceName()) || isNullOrEmpty(getStateModelDef())
-              || isNullOrEmpty(getToState()) || isNullOrEmpty(getStateModelFactoryName())
-              || isNullOrEmpty(getFromState());
+      boolean isNotValid = isNullOrEmpty(getTgtName()) || isNullOrEmpty(getPartitionName())
+          || isNullOrEmpty(getResourceName()) || isNullOrEmpty(getStateModelDef())
+          || isNullOrEmpty(getToState()) || isNullOrEmpty(getStateModelFactoryName())
+          || isNullOrEmpty(getFromState()) || isNullOrEmpty(getTgtSessionId());
 
       return !isNotValid;
     }
