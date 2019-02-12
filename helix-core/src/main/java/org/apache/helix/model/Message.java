@@ -904,16 +904,14 @@ public class Message extends HelixProperty {
   public boolean isValid() {
     // TODO: refactor message to state transition message and task-message and
     // implement this function separately
-
-    if (getMsgType().equals(MessageType.STATE_TRANSITION.name())) {
+    if (getMsgType().equals(MessageType.STATE_TRANSITION.name())
+        || getMsgType().equals(MessageType.STATE_TRANSITION_CANCELLATION.name())) {
       boolean isNotValid = isNullOrEmpty(getTgtName()) || isNullOrEmpty(getPartitionName())
           || isNullOrEmpty(getResourceName()) || isNullOrEmpty(getStateModelDef())
-          || isNullOrEmpty(getToState()) || isNullOrEmpty(getStateModelFactoryName())
-          || isNullOrEmpty(getFromState()) || isNullOrEmpty(getTgtSessionId());
-
+          || isNullOrEmpty(getToState()) || isNullOrEmpty(getFromState())
+          || isNullOrEmpty(getTgtSessionId());
       return !isNotValid;
     }
-
     return true;
   }
 }

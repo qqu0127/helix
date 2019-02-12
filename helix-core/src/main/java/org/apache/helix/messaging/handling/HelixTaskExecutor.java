@@ -857,6 +857,7 @@ public class HelixTaskExecutor implements MessageListener, TaskExecutor {
             message, e);
         removeMessageFromTaskAndFutureMap(message);
         removeMessageFromZK(accessor, message, instanceName);
+        continue;
       }
 
       // create message handlers, if handlers not found, leave its state as NEW
