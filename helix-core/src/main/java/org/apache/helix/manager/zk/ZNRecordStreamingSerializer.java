@@ -157,7 +157,7 @@ public class ZNRecordStreamingSerializer implements ZkSerializer {
       g.close();
       serializedBytes = baos.toByteArray();
       // apply compression if needed
-      if (record.getBooleanField("enableCompression", false) || serializedBytes.length > ZNRecord.SIZE_LIMIT) {
+      if (record.getBooleanField("enableCompression", false)) {
         serializedBytes = GZipCompressionUtil.compress(serializedBytes);
       }
     } catch (Exception e) {
