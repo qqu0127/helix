@@ -1,9 +1,7 @@
 owners: [
- hulee,
  jjwang,
  jxue,
- lxia,
- ywang4
+ lxia
 ]
 groups: [
  helix-reviewers
