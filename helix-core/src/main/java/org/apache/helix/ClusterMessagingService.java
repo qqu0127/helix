@@ -144,7 +144,7 @@ public interface ClusterMessagingService {
   /**
    * This will generate all messages to be sent given the recipientCriteria and MessageTemplate,
    * the messages are not sent.
-   * @param receipientCriteria criteria to be met, defined as {@link Criteria}
+   * @param recipientCriteria criteria to be met, defined as {@link Criteria}
    * @param messageTemplate the Message on which to base the messages to send
    * @return messages to be sent, grouped by the type of instance to send the message to
    */
