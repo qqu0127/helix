@@ -281,6 +281,7 @@ public class TestHelixAdminCli extends ZkTestBase {
       Thread.sleep(200);
       leader = accessor.getProperty(accessor.keyBuilder().controllerLeader());
     }
+    Assert.assertNotNull(leader);
     Assert.assertTrue(leader.getInstanceName().startsWith("controller_900"));
 
     boolean verifyResult = ClusterStateVerifier
