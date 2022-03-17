@@ -19,11 +19,14 @@ package org.apache.helix.model;
  * under the License.
  */
 
+import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableMap;
@@ -81,7 +84,8 @@ public class ClusterConfig extends HelixProperty {
     // partitons that need recovery or in
     // error exceeds this limitation
     DISABLED_INSTANCES,
-
+    // The disabled zones
+    DISABLED_ZONES,
     // Specifies job types and used for quota allocation
     QUOTA_TYPES,
 
@@ -782,6 +786,34 @@ public class ClusterConfig extends HelixProperty {
       return Collections.emptyList();
     }
     return capacityKeys;
+  }
+
+  public Set<String> getDisabledZones() {
+    List<String> disabledZones = _record.getListField(ClusterConfigProperty.DISABLED_ZONES.name());
+    return disabledZones == null ? Collections.emptySet() : ImmutableSet.copyOf(disabledZones);
+  }
+
+  public boolean isZoneDisabled(String zoneId) {
+    Set<String> disabledZones = getDisabledZones();
+    return disabledZones.contains(zoneId);
+  }
+
+  public void addDisabledZone(String zoneId) {
+    updateDisabledZone(zoneId, true);
+  }
+
+  public void removeDisabledZone(String zoneId) {
+    updateDisabledZone(zoneId, false);
+  }
+
+  private void updateDisabledZone(String zoneId, boolean disabled) {
+    Set<String> disabledZones = new HashSet<>(getDisabledZones());
+    if (disabled) {
+      disabledZones.add(zoneId);
+    } else {
+      disabledZones.remove(zoneId);
+    }
+    _record.setListField(ClusterConfigProperty.DISABLED_ZONES.name(), new ArrayList<>(disabledZones));
   }
 
   /**
