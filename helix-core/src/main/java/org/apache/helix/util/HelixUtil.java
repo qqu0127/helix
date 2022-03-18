@@ -572,6 +572,26 @@ public final class HelixUtil {
         instance -> isInstanceInManagementMode(instance, liveInstanceMap, instancesMessages));
   }
 
+  /**
+   * Fetch the instances in disabled fault zones
+   * @param instanceConfigs instance config
+   * @param clusterConfig cluster config
+   * @return A set of instances that are in disabled fault zones.
+   */
+  public static Set<String> fetchInstancesInDisabledZones(Collection<InstanceConfig> instanceConfigs,
+      ClusterConfig clusterConfig) {
+    if (clusterConfig == null) {
+      return Collections.emptySet();
+    }
+    Set<String> disabledZones = clusterConfig.getDisabledZones();
+    String faultZoneType = clusterConfig.getFaultZoneType();
+    return instanceConfigs.stream()
+        .filter(config -> config.getDomainAsMap().containsKey(faultZoneType)
+            && disabledZones.contains(config.getDomainAsMap().get(faultZoneType)))
+        .map(InstanceConfig::getInstanceName)
+        .collect(Collectors.toSet());
+  }
+
   private static boolean isInstanceInManagementMode(String instance,
       Map<String, LiveInstance> liveInstanceMap,
       Map<String, Collection<Message>> instancesMessages) {

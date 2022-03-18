@@ -105,17 +105,17 @@ public class BaseControllerDataProvider implements ControlContextProvider {
   private final PropertyCache<StateModelDefinition> _stateModelDefinitionCache;
 
   // Special caches
-  private CurrentStateCache _currentStateCache;
+  private final CurrentStateCache _currentStateCache;
+  private final InstanceMessagesCache _instanceMessagesCache;
   protected TaskCurrentStateCache _taskCurrentStateCache;
-  private InstanceMessagesCache _instanceMessagesCache;
 
   // Other miscellaneous caches
+  private final Map<String, Map<String, Set<String>>> _disabledInstanceForPartitionMap = new HashMap<>();
+  private final Set<String> _disabledInstanceSet = new HashSet<>();
+  private final Map<String, MonitoredAbnormalResolver> _abnormalStateResolverMap = new HashMap<>();
+  private final Set<String> _timedOutInstanceDuringMaintenance = new HashSet<>();
   private Map<String, Long> _instanceOfflineTimeMap;
   private Map<String, Map<String, String>> _idealStateRuleMap;
-  private Map<String, Map<String, Set<String>>> _disabledInstanceForPartitionMap = new HashMap<>();
-  private Set<String> _disabledInstanceSet = new HashSet<>();
-  private final Map<String, MonitoredAbnormalResolver> _abnormalStateResolverMap = new HashMap<>();
-  private Set<String> _timedOutInstanceDuringMaintenance = new HashSet<>();
   private Map<String, LiveInstance> _liveInstanceExcludeTimedOutForMaintenance = new HashMap<>();
 
   public BaseControllerDataProvider() {
@@ -802,18 +802,15 @@ public class BaseControllerDataProvider implements ControlContextProvider {
         _disabledInstanceSet.add(config.getInstanceName());
       }
       for (String resource : disabledPartitionMap.keySet()) {
-        if (!_disabledInstanceForPartitionMap.containsKey(resource)) {
-          _disabledInstanceForPartitionMap.put(resource, new HashMap<>());
-        }
+        _disabledInstanceForPartitionMap.putIfAbsent(resource, new HashMap<>());
         for (String partition : disabledPartitionMap.get(resource)) {
-          if (!_disabledInstanceForPartitionMap.get(resource).containsKey(partition)) {
-            _disabledInstanceForPartitionMap.get(resource).put(partition, new HashSet<>());
-          }
-          _disabledInstanceForPartitionMap.get(resource).get(partition)
+          _disabledInstanceForPartitionMap.get(resource)
+              .computeIfAbsent(partition, key -> new HashSet<>())
               .add(config.getInstanceName());
         }
       }
     }
+    _disabledInstanceSet.addAll(HelixUtil.fetchInstancesInDisabledZones(instanceConfigs, clusterConfig));
     if (clusterConfig != null && clusterConfig.getDisabledInstances() != null) {
       _disabledInstanceSet.addAll(clusterConfig.getDisabledInstances().keySet());
     }

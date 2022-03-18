@@ -9,17 +9,30 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.helix.HelixDataAccessor;
+import org.apache.helix.controller.dataproviders.BaseControllerDataProvider;
 import org.apache.helix.manager.zk.ZKHelixDataAccessor;
 import org.apache.helix.model.ClusterConfig;
 import org.apache.helix.model.InstanceConfig;
 import org.junit.Assert;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 
 public class TestZoneAccessor extends AbstractTestClass  {
 
+  private HelixDataAccessor _helixDataAccessor;
   private static final String TEST_CLUSTER = "TestCluster_1";
+  private final String _instance1 = TEST_CLUSTER + "_localhost_12918";
+  private final String _instance2 = TEST_CLUSTER + "_localhost_12922";
+  private final String _instance3 = TEST_CLUSTER + "_localhost_12923";
+  private final String _instanceUrl1 =
+      String.format("clusters/%s/instances/%s", TEST_CLUSTER, _instance1);
+  private final String _instanceUrl2 =
+      String.format("clusters/%s/instances/%s", TEST_CLUSTER, _instance2);
+  private final String _instanceUrl3 =
+      String.format("clusters/%s/instances/%s", TEST_CLUSTER, _instance3);
+
   @BeforeTest
   public void beforeTest() {
     ClusterConfig clusterConfig = _configAccessor.getClusterConfig(TEST_CLUSTER);
@@ -28,16 +41,16 @@ public class TestZoneAccessor extends AbstractTestClass  {
     clusterConfig.setTopologyAwareEnabled(true);
     _configAccessor.updateClusterConfig(TEST_CLUSTER, clusterConfig);
 
-    HelixDataAccessor helixDataAccessor = new ZKHelixDataAccessor(TEST_CLUSTER, _baseAccessor);
+    _helixDataAccessor = new ZKHelixDataAccessor(TEST_CLUSTER, _baseAccessor);
     Set<String> instances = new HashSet<>();
     // setup up 10 instances across 5 zones
     for (int i = 0; i < 10; i++) {
       String instanceName = TEST_CLUSTER + "_localhost_" + (12918 + i);
       _gSetupTool.addInstanceToCluster(TEST_CLUSTER, instanceName);
       InstanceConfig instanceConfig =
-          helixDataAccessor.getProperty(helixDataAccessor.keyBuilder().instanceConfig(instanceName));
+          _helixDataAccessor.getProperty(_helixDataAccessor.keyBuilder().instanceConfig(instanceName));
       instanceConfig.setDomain("zone=zone_" + i / 2 + ",instance=" + instanceName);
-      helixDataAccessor.setProperty(helixDataAccessor.keyBuilder().instanceConfig(instanceName), instanceConfig);
+      _helixDataAccessor.setProperty(_helixDataAccessor.keyBuilder().instanceConfig(instanceName), instanceConfig);
       instances.add(instanceName);
     }
     startInstances(TEST_CLUSTER, instances, 10);
@@ -83,6 +96,64 @@ public class TestZoneAccessor extends AbstractTestClass  {
     Assert.assertEquals(disabledZones.size(), 2);
     Assert.assertTrue(disabledZones.contains("zone_1"));
     Assert.assertTrue(disabledZones.contains("zone_3"));
+
+    post(zonesUrl + "/zone_1",
+        ImmutableMap.of("command", "enable"),
+        Entity.entity("", MediaType.APPLICATION_JSON_TYPE),
+        Response.Status.OK.getStatusCode());
+    post(zonesUrl + "/zone_3",
+        ImmutableMap.of("command", "enable"),
+        Entity.entity("", MediaType.APPLICATION_JSON_TYPE),
+        Response.Status.OK.getStatusCode());
+  }
+
+  @Test(dependsOnMethods = "testDisabledZones")
+  public void testDisabledInstancesFromCache() {
+    BaseControllerDataProvider cache = new BaseControllerDataProvider(TEST_CLUSTER, "test-pipeline");
+    String zonesUrl = String.format("clusters/%s/zones", TEST_CLUSTER);
+
+
+    post(zonesUrl + "/zone_2",
+        ImmutableMap.of("command", "disable"),
+        Entity.entity("", MediaType.APPLICATION_JSON_TYPE),
+        Response.Status.OK.getStatusCode());
+    post(_instanceUrl1,
+        ImmutableMap.of("command", "disable"),
+        Entity.entity("", MediaType.APPLICATION_JSON_TYPE),
+        Response.Status.OK.getStatusCode());
+    post(_instanceUrl2,
+        ImmutableMap.of("command", "disable"),
+        Entity.entity("", MediaType.APPLICATION_JSON_TYPE),
+        Response.Status.OK.getStatusCode());
+    post(_instanceUrl3,
+        ImmutableMap.of("command", "enable"),
+        Entity.entity("", MediaType.APPLICATION_JSON_TYPE),
+        Response.Status.OK.getStatusCode());
+
+    cache.refresh(_helixDataAccessor);
+    Set<String> disabledInstancesFromCache = cache.getDisabledInstances();
+    Assert.assertEquals(disabledInstancesFromCache.size(), 3);
+    Assert.assertTrue(disabledInstancesFromCache.contains(_instance1));
+    Assert.assertTrue(disabledInstancesFromCache.contains(_instance2));
+    Assert.assertTrue(disabledInstancesFromCache.contains(_instance3));
+  }
+
+  @AfterTest
+  public void cleanup() {
+    String zonesUrl = String.format("clusters/%s/zones", TEST_CLUSTER);
+
+    post(zonesUrl + "/zone_2",
+        ImmutableMap.of("command", "enable"),
+        Entity.entity("", MediaType.APPLICATION_JSON_TYPE),
+        Response.Status.OK.getStatusCode());
+    post(_instanceUrl1,
+        ImmutableMap.of("command", "enable"),
+        Entity.entity("", MediaType.APPLICATION_JSON_TYPE),
+        Response.Status.OK.getStatusCode());
+    post(_instanceUrl2,
+        ImmutableMap.of("command", "enable"),
+        Entity.entity("", MediaType.APPLICATION_JSON_TYPE),
+        Response.Status.OK.getStatusCode());
   }
 
   private Set<String> getSetFromRest(String url) throws JsonProcessingException {
