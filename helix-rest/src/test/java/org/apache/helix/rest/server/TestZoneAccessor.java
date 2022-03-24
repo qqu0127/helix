@@ -112,7 +112,6 @@ public class TestZoneAccessor extends AbstractTestClass  {
     BaseControllerDataProvider cache = new BaseControllerDataProvider(TEST_CLUSTER, "test-pipeline");
     String zonesUrl = String.format("clusters/%s/zones", TEST_CLUSTER);
 
-
     post(zonesUrl + "/zone_2",
         ImmutableMap.of("command", "disable"),
         Entity.entity("", MediaType.APPLICATION_JSON_TYPE),

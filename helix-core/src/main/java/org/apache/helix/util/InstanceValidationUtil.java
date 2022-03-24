@@ -76,12 +76,41 @@ public class InstanceValidationUtil {
     if (instanceConfig == null || clusterConfig == null) {
       throw new HelixException("InstanceConfig or ClusterConfig is NULL");
     }
+    return isInstanceEnabled(instanceConfig, clusterConfig);
+  }
 
+  /**
+   * Check if the instance is enabled by configuration
+   * @param instanceConfig
+   * @param clusterConfig
+   * @return
+   */
+  public static boolean isInstanceEnabled(InstanceConfig instanceConfig, ClusterConfig clusterConfig) {
+    if (instanceConfig == null || clusterConfig == null) {
+      throw new HelixException("InstanceConfig or ClusterConfig is NULL");
+    }
     boolean enabledInInstanceConfig = instanceConfig.getInstanceEnabled();
-    Map<String, String> disabledInstances = clusterConfig.getDisabledInstances();
-    boolean enabledInClusterConfig =
-        disabledInstances == null || !disabledInstances.keySet().contains(instanceName);
-    return enabledInClusterConfig && enabledInInstanceConfig;
+    Map<String, String> disabledInstancesFromClusterConfig = clusterConfig.getDisabledInstances();
+    boolean enabledInClusterConfig = disabledInstancesFromClusterConfig == null
+        || !disabledInstancesFromClusterConfig.containsKey(instanceConfig.getInstanceName());
+    boolean disabledInZone = isInstanceInDisabledZones(instanceConfig, clusterConfig);
+    return enabledInClusterConfig && enabledInInstanceConfig && !disabledInZone;
+  }
+
+  /**
+   * Check if an instance is in disabled zone of a cluster
+   * @param instanceConfig instance config
+   * @param clusterConfig cluster config
+   * @return True if the instance is in a disabled zone of the cluster
+   */
+  private static boolean isInstanceInDisabledZones(InstanceConfig instanceConfig, ClusterConfig clusterConfig) {
+    if (clusterConfig == null) {
+      return false;
+    }
+    Set<String> disabledZones = clusterConfig.getDisabledZones();
+    String faultZoneType = clusterConfig.getFaultZoneType();
+    return instanceConfig.getDomainAsMap().containsKey(faultZoneType)
+        && disabledZones.contains(instanceConfig.getDomainAsMap().get(faultZoneType));
   }
 
   /**

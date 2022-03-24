@@ -62,6 +62,7 @@ import org.apache.helix.model.ResourceConfig;
 import org.apache.helix.model.StateModelDefinition;
 import org.apache.helix.task.TaskConstants;
 import org.apache.helix.util.HelixUtil;
+import org.apache.helix.util.InstanceValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -796,11 +797,12 @@ public class BaseControllerDataProvider implements ControlContextProvider {
     // Move the calculating disabled instances to refresh
     _disabledInstanceForPartitionMap.clear();
     _disabledInstanceSet.clear();
+
     for (InstanceConfig config : instanceConfigs) {
-      Map<String, List<String>> disabledPartitionMap = config.getDisabledPartitionsMap();
-      if (!config.getInstanceEnabled()) {
+      if (!InstanceValidationUtil.isInstanceEnabled(config, clusterConfig)) {
         _disabledInstanceSet.add(config.getInstanceName());
       }
+      Map<String, List<String>> disabledPartitionMap = config.getDisabledPartitionsMap();
       for (String resource : disabledPartitionMap.keySet()) {
         _disabledInstanceForPartitionMap.putIfAbsent(resource, new HashMap<>());
         for (String partition : disabledPartitionMap.get(resource)) {
@@ -809,10 +811,6 @@ public class BaseControllerDataProvider implements ControlContextProvider {
               .add(config.getInstanceName());
         }
       }
-    }
-    _disabledInstanceSet.addAll(HelixUtil.fetchInstancesInDisabledZones(instanceConfigs, clusterConfig));
-    if (clusterConfig != null && clusterConfig.getDisabledInstances() != null) {
-      _disabledInstanceSet.addAll(clusterConfig.getDisabledInstances().keySet());
     }
   }
 

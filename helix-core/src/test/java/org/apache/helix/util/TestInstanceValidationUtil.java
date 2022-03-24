@@ -111,6 +111,27 @@ public class TestInstanceValidationUtil {
   }
 
   @Test
+  public void testInstanceDisabledByZone() {
+    InstanceConfig instanceConfig = new InstanceConfig(TEST_INSTANCE);
+    instanceConfig.setDomain("zone=testZone1");
+    ClusterConfig clusterConfig = new ClusterConfig(TEST_CLUSTER);
+    clusterConfig.setFaultZoneType("zone");
+    clusterConfig.setTopologyAwareEnabled(true);
+    clusterConfig.setTopology("/zone/instance");
+    clusterConfig.addDisabledZone("testZone1");
+    Assert.assertFalse(InstanceValidationUtil.isInstanceEnabled(instanceConfig, clusterConfig));
+    // switch a zone
+    instanceConfig.setDomain("zone=testZone2");
+    Assert.assertTrue(InstanceValidationUtil.isInstanceEnabled(instanceConfig, clusterConfig));
+    // disable the new zone
+    clusterConfig.addDisabledZone("testZone2");
+    Assert.assertFalse(InstanceValidationUtil.isInstanceEnabled(instanceConfig, clusterConfig));
+    // re-enable the zone
+    clusterConfig.removeDisabledZone("testZone2");
+    Assert.assertTrue(InstanceValidationUtil.isInstanceEnabled(instanceConfig, clusterConfig));
+  }
+
+  @Test
   public void TestIsInstanceAlive() {
     Mock mock = new Mock();
     doReturn(new LiveInstance(TEST_INSTANCE)).when(mock.dataAccessor)
