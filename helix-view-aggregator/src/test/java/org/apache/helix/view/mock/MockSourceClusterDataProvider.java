@@ -87,15 +87,19 @@ public class MockSourceClusterDataProvider extends SourceClusterDataProvider {
   }
 
   public void setInstanceConfigs(List<InstanceConfig> instanceConfigList) {
+    /*
     for (InstanceConfig config : instanceConfigList) {
       _instanceConfigMap.put(config.getInstanceName(), config);
     }
+    */
   }
 
   public void setLiveInstances(List<LiveInstance> liveInstanceList) {
+    /*
     for (LiveInstance instance : liveInstanceList) {
       _liveInstanceMap.put(instance.getInstanceName(), instance);
     }
+    */
   }
 
   public void setExternalViews(List<ExternalView> externalViewList) {

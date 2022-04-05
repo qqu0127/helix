@@ -20,7 +20,6 @@ package org.apache.helix.view.dataprovider;
  */
 
 import java.util.List;
-import org.I0Itec.zkclient.exception.ZkInterruptedException;
 import org.apache.helix.HelixConstants;
 import org.apache.helix.HelixDataAccessor;
 import org.apache.helix.HelixManager;
@@ -40,6 +39,7 @@ import org.apache.helix.model.ExternalView;
 import org.apache.helix.model.InstanceConfig;
 import org.apache.helix.model.LiveInstance;
 import org.apache.helix.view.common.ClusterViewEvent;
+import org.apache.helix.zookeeper.zkclient.exception.ZkInterruptedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
