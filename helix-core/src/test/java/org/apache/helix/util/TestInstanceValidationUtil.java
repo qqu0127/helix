@@ -80,7 +80,7 @@ public class TestInstanceValidationUtil {
         .getProperty(BUILDER.instanceConfig(TEST_INSTANCE));
     ClusterConfig clusterConfig = new ClusterConfig(TEST_CLUSTER);
     if (!clusterConfigEnabled) {
-      clusterConfig.setDisabledInstances(ImmutableMap.of(TEST_INSTANCE, "12345"));
+      clusterConfig.setDisabledInstancesWithInfo(ImmutableMap.of(TEST_INSTANCE, "12345"));
     }
     doReturn(clusterConfig).when(mock.dataAccessor)
         .getProperty(BUILDER.clusterConfig());

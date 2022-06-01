@@ -84,6 +84,7 @@ public class ClusterConfig extends HelixProperty {
     // state transition if the number of
     // partitons that need recovery or in
     // error exceeds this limitation
+    @Deprecated
     DISABLED_INSTANCES,
     DISABLED_INSTANCES_WITH_INFO,
     // disabled instances and disabled instances with info are for storing batch disabled instances.
@@ -804,6 +805,22 @@ public class ClusterConfig extends HelixProperty {
   }
 
   /**
+   * Get current disabled instance map of <instance, disabledTimeStamp>
+   * @return a non-null map of disabled instances in cluster config
+   */
+  public Map<String, String> getDisabledInstancesTimestamp() {
+    Map<String, String> disabledInstances =
+        _record.getMapField(ClusterConfigProperty.DISABLED_INSTANCES_WITH_INFO.name());
+    if (disabledInstances == null || disabledInstances.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return disabledInstances.entrySet().stream()
+        .collect(Collectors.toMap(Map.Entry::getKey,
+            entry -> ConfigStringUtil.parseConcatenatedConfig(entry.getValue())
+                .get(ClusterConfig.ClusterConfigProperty.HELIX_ENABLED_DISABLE_TIMESTAMP.toString())));
+  }
+
+  /**
    * Whether the P2P state transition message is enabled for all resources in this cluster. By
    * default it is disabled if not set.
    * @return
@@ -1144,8 +1161,7 @@ public class ClusterConfig extends HelixProperty {
   }
 
   public String getInstanceHelixDisabledType(String instanceName) {
-    if (!getDisabledInstancesWithInfo().containsKey(instanceName) &&
-        !getDisabledInstances().containsKey(instanceName)) {
+    if (!getDisabledInstancesWithInfo().containsKey(instanceName)) {
       return InstanceConstants.INSTANCE_NOT_DISABLED;
     }
     return ConfigStringUtil.parseConcatenatedConfig(getDisabledInstancesWithInfo().get(instanceName))
@@ -1171,8 +1187,8 @@ public class ClusterConfig extends HelixProperty {
     if (getDisabledInstancesWithInfo().containsKey(instanceName)) {
       return ConfigStringUtil
           .parseConcatenatedConfig(getDisabledInstancesWithInfo().get(instanceName))
-          .get(ClusterConfigProperty.HELIX_ENABLED_DISABLE_TIMESTAMP.toString());
+          .getOrDefault(ClusterConfigProperty.HELIX_ENABLED_DISABLE_TIMESTAMP.toString(), "");
     }
-    return getDisabledInstances().get(instanceName);
+    return "";
   }
 }

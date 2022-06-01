@@ -81,7 +81,7 @@ public class WeightAwareRebalanceUtil {
       _instanceConfigMap.put(instanceConfig.getInstanceName(), instanceConfig);
     }
     // ensure no instance is disabled
-    clusterConfig.setDisabledInstances(Collections.<String, String>emptyMap());
+    clusterConfig.setDisabledInstances(Collections.emptyMap());
     _clusterConfig = clusterConfig;
 
     _dataCache = new ResourceControllerDataProvider();

@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.helix.AccessOption;
@@ -359,8 +360,8 @@ public class ZKHelixAdmin implements HelixAdmin {
     // Eventually we will have all instances' enable/disable information in clusterConfig. Now we
     // update both instanceConfig and clusterConfig in transition period.
     enableSingleInstance(clusterName, instanceName, enabled, baseAccessor, disabledType, reason);
-    enableBatchInstances(clusterName, Collections.singletonList(instanceName), enabled,
-        baseAccessor, disabledType, reason);
+//    enableBatchInstances(clusterName, Collections.singletonList(instanceName), enabled,
+//        baseAccessor, disabledType, reason);
 
   }
 
@@ -372,12 +373,10 @@ public class ZKHelixAdmin implements HelixAdmin {
     BaseDataAccessor<ZNRecord> baseAccessor = new ZkBaseDataAccessor<>(_zkClient);
     // Eventually we will have all instances' enable/disable information in clusterConfig. Now we
     // update both instanceConfig and clusterConfig in transition period.
-    if (enabled) {
-      for (String instance : instances) {
-        enableSingleInstance(clusterName, instance, enabled, baseAccessor, disabledType, reason);
-      }
+    for (String instance : instances) {
+      enableSingleInstance(clusterName, instance, enabled, baseAccessor, disabledType, reason);
     }
-    enableBatchInstances(clusterName, instances, enabled, baseAccessor, disabledType, reason);
+    // enableBatchInstances(clusterName, instances, enabled, baseAccessor, disabledType, reason);
   }
 
   @Override
@@ -1917,6 +1916,9 @@ public class ZKHelixAdmin implements HelixAdmin {
   private void enableBatchInstances(final String clusterName, final List<String> instances,
       final boolean enabled, BaseDataAccessor<ZNRecord> baseAccessor,
       InstanceConstants.InstanceDisabledType disabledType, String reason) {
+    if (true) {
+      throw new HelixException("enableBatchInstances is not allowed.");
+    }
 
     String path = PropertyPathBuilder.clusterConfig(clusterName);
 
@@ -1924,36 +1926,29 @@ public class ZKHelixAdmin implements HelixAdmin {
       throw new HelixException("Cluster " + clusterName + ": cluster config does not exist");
     }
 
-    baseAccessor.update(path, new DataUpdater<ZNRecord>() {
-      @Override
-      public ZNRecord update(ZNRecord currentData) {
-        if (currentData == null) {
-          throw new HelixException("Cluster: " + clusterName + ": cluster config is null");
-        }
-
-        ClusterConfig clusterConfig = new ClusterConfig(currentData);
-        Map<String, String> disabledInstances = new TreeMap<>(clusterConfig.getDisabledInstances());
-        Map<String, String> disabledInstancesWithInfo = new TreeMap<>(clusterConfig.getDisabledInstancesWithInfo());
-        if (enabled) {
-          disabledInstances.keySet().removeAll(instances);
-          disabledInstancesWithInfo.keySet().removeAll(instances);
-        } else {
-          for (String disabledInstance : instances) {
-            // We allow user to override disabledType and reason for an already disabled instance.
-            // TODO: we are updating both DISABLED_INSTANCES and DISABLED_INSTANCES_W_INFO for
-            // backward compatible. Deprecate DISABLED_INSTANCES in the future.
-            // TODO: update the history ZNode
-            String timeStamp = String.valueOf(System.currentTimeMillis());
-            disabledInstances.put(disabledInstance, timeStamp);
-            disabledInstancesWithInfo
-                .put(disabledInstance, assembleInstanceBatchedDisabledInfo(disabledType, reason, timeStamp));
-          }
-        }
-        clusterConfig.setDisabledInstances(disabledInstances);
-        clusterConfig.setDisabledInstancesWithInfo(disabledInstancesWithInfo);
-
-        return clusterConfig.getRecord();
+    baseAccessor.update(path, currentData -> {
+      if (currentData == null) {
+        throw new HelixException("Cluster: " + clusterName + ": cluster config is null");
       }
+
+      ClusterConfig clusterConfig = new ClusterConfig(currentData);
+      Map<String, String> disabledInstancesWithInfo = new TreeMap<>(clusterConfig.getDisabledInstancesWithInfo());
+      if (enabled) {
+        disabledInstancesWithInfo.keySet().removeAll(instances);
+      } else {
+        for (String disabledInstance : instances) {
+          // We allow user to override disabledType and reason for an already disabled instance.
+          // TODO: we are updating both DISABLED_INSTANCES and DISABLED_INSTANCES_W_INFO for
+          // backward compatible. Deprecate DISABLED_INSTANCES in the future.
+          // TODO: update the history ZNode
+          String timeStamp = String.valueOf(System.currentTimeMillis());
+          disabledInstancesWithInfo
+              .put(disabledInstance, assembleInstanceBatchedDisabledInfo(disabledType, reason, timeStamp));
+        }
+      }
+      clusterConfig.setDisabledInstancesWithInfo(disabledInstancesWithInfo);
+
+      return clusterConfig.getRecord();
     }, AccessOption.PERSISTENT);
   }
 
@@ -1975,7 +1970,7 @@ public class ZKHelixAdmin implements HelixAdmin {
   @Override
   public Map<String, String> getBatchDisabledInstances(String clusterName) {
     ConfigAccessor accessor = new ConfigAccessor(_zkClient);
-    return accessor.getClusterConfig(clusterName).getDisabledInstances();
+    return accessor.getClusterConfig(clusterName).getDisabledInstancesTimestamp();
   }
 
   @Override
