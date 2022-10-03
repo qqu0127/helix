@@ -435,6 +435,16 @@
       <id>apache.website</id>
       <url>scm:svn:https://svn.apache.org/repos/asf/helix/site-content/</url>
     </site>
+    <repository>
+        <id>jfrog-linkedin-release</id>
+        <name>linkedin-releases</name>
+        <url>https://linkedin.jfrog.io/artifactory/helix</url>
+    </repository>
+    <snapshotRepository>
+        <id>jfrog-linkedin-snapshots</id>
+        <name>linkedin-snapshots</name>
+        <url>https://linkedin.jfrog.io/artifactory/helix</url>
+    </snapshotRepository>
   </distributionManagement>
 
   <dependencyManagement>
