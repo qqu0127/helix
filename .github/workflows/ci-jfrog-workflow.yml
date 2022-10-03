@@ -21,7 +21,11 @@ name: Publish to LinkedIn JFrog
 on:
   push:
     branches: [ 'test-jfrog' ]
-  workflow_dispatch: 'ci-jfrog-workflow'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version to publish to jfrog'
+        required: false
 jobs:
   deploy:
     name: deploy
@@ -38,10 +42,17 @@ jobs:
         id: extract_branch
       - name: Bump up version
         shell: bash
-        run: ./.github/scripts/bump-up-snapshot-version.sh
+        if: "${{ github.inputs.version == '' }}"
+        run: sh ./.github/scripts/bump-up-version.sh
+      - name: Bump up version with manual input
+        shell: bash
+        if: "${{ github.inputs.version != '' }}"
+        run: sh ./.github/scripts/bump-up-version.sh ${{ github.inputs.version }}
       - name: Build with Maven
-        run: ./build && |
-          mvn clean deploy -DskipTests -s .github/workflows/settings.xml -DretryFailedDeploymentCount=3
+        shell: bash
+        run: ./build
+      - name: Publish to jfrog
+        run: mvn clean deploy -DskipTests -s .github/workflows/settings.xml -DretryFailedDeploymentCount=3
         env:
           MVN_DEPLOY_JFROG_KEY: ${{ secrets.MVN_DEPLOY_JFROG_KEY }}
           MVN_DEPLOY_JFROG_USER: ${{ secrets.MVN_DEPLOY_JFROG_USER }}

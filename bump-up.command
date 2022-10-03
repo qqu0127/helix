@@ -19,9 +19,6 @@
 # under the License.
 #
 
-MODULES=("metrics-common" "metadata-store-directory-common" "zookeeper-api" "helix-common" "helix-core" \
-"helix-admin-webapp" "helix-front" "helix-rest" "helix-lock" "helix-view-aggregator" "helix-agent")
-
 update_pom_version() {
   pom=$1
   echo "bump up $pom"
@@ -65,7 +62,8 @@ fi
 echo "bump up: $version -> $new_version"
 update_pom_version "pom.xml"
 
-for module in "${MODULES[@]}"; do
+for module in "metrics-common" "metadata-store-directory-common" "zookeeper-api" "helix-common" "helix-core" \
+              "helix-admin-webapp" "helix-front" "helix-rest" "helix-lock" "helix-view-aggregator" "helix-agent"; do
   update_pom_version "$module/pom.xml"
   update_ivy $module
 done
