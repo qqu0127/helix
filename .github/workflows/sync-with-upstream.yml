@@ -1,0 +1,34 @@
+name: Sync with Upstream
+
+on:
+  schedule:
+    - cron:  '*/10 * * * *'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Fetch upstream and update
+        run: |
+          git config --global user.email "qqu@linkedin.com"
+          git config --global user.name "Qi (Quincy) Qu"
+          git checkout master
+          CUR_HEAD=$(git rev-parse HEAD)
+          echo "Current head at ${CUR_HEAD}"
+          git remote add upstream https://github.com/apache/helix.git
+          git fetch upstream master
+          COMMIT_COUNT=$(git rev-list $CUR_HEAD..upstream/master --count)
+          ZERO_COUNT=0
+          if [ $COMMIT_COUNT -gt $ZERO_COUNT ];
+            then
+              echo "$COMMIT_COUNT new commits found from upstream/master"
+              git log $CUR_HEAD..upstream/master | cat
+              git rebase upstream/master
+              git push origin master
+            else
+              echo "No new commit from upstream"
+          fi
