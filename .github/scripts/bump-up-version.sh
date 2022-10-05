@@ -23,7 +23,7 @@ current_version=`grep -A 1 "<artifactId>helix</artifactId>" pom.xml | grep "<ver
 if [ "$#" -eq 1 ]; then
   new_version=$1
 else
-  timestamp=`date +'%Y%m%d%H%M'`
+  timestamp=`date -u +'%Y%m%d%H%M'`
   new_version=`echo $current_version | cut -d'-' -f1`-dev-$timestamp
 fi
 sh ./bump-up.command $current_version $new_version

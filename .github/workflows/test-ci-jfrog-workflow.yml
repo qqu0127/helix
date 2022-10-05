@@ -39,9 +39,13 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
-      - name: Extract branch name
+      - name: Extract branch name and commit
         shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
+        run: |
+          echo "git hash: "
+          echo $(git rev-parse --short "$GITHUB_SHA")
+          echo "git branch: "
+          echo ${GITHUB_REF#refs/heads/}
         id: extract_branch
       - name: Bump up version
         shell: bash
