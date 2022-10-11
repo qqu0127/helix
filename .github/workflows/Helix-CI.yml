@@ -1,9 +1,6 @@
 name: Helix CI
 on:
-  push:
-    branches: [ master ]
-  schedule:
-    - cron: '0 */12 * * *'
+  workflow_dispatch:
 
 jobs:
   Merge_PR_CI:

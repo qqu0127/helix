@@ -1,0 +1,90 @@
+#
+## Licensed to the Apache Software Foundation (ASF) under one
+## or more contributor license agreements.  See the NOTICE file
+## distributed with this work for additional information
+## regarding copyright ownership.  The ASF licenses this file
+## to you under the Apache License, Version 2.0 (the
+## "License"); you may not use this file except in compliance
+## with the License.  You may obtain a copy of the License at
+##
+##   http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing,
+## software distributed under the License is distributed on an
+## "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+## KIND, either express or implied.  See the License for the
+## specific language governing permissions and limitations
+## under the License.
+##
+name: Publish to LinkedIn Jfrog
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The version to publish to jfrog'
+        required: false
+      branch:
+        description: 'The branch to build and publish'
+        required: true
+      repo:
+        type: choice
+        description: 'The repository of the branch'
+        required: true
+        options:
+          - apache/helix
+          - qqu0127/helix
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout helix branch"
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repo }}
+          ref: ${{ inputs.branch }}
+          path: helix-main
+      - name: "Checkout helix-elr"
+        uses: actions/checkout@v3
+        with:
+          ref: 'master'
+          path: helix-elr
+      - name: Set up JDK 1.8
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+      - name: Extract branch name
+        shell: bash
+        run: |
+          cd helix-main
+          echo | git log -1
+        id: extract_branch
+      - name: ELR job Environment setup
+        shell: bash
+        run: |
+          cp helix-elr/.github/scripts/bump-up-version.sh helix-main/.github/scripts/
+          cp helix-elr/.github/workflows/settings.xml helix-main/.github/workflows
+          cp -r helix-elr/helix-linkedin-dep helix-main/
+      - name: Bump up version
+        shell: bash
+        if: inputs.version == ''
+        run: |
+          cd helix-main
+          sh ./.github/scripts/bump-up-version.sh
+      - name: Bump up version with manual version
+        shell: bash
+        if: inputs.version != ''
+        run: |
+          cd helix-main
+          sh ./.github/scripts/bump-up-version.sh ${{ inputs.version }}
+      - name: Build with Maven
+        shell: bash
+        run: |
+          cd helix-main
+          sed -i '/<modules\>/a <module>helix-linkedin-dep</module>' pom.xml
+          ./build
+          mvn clean deploy -DskipTests -s .github/workflows/settings.xml -DretryFailedDeploymentCount=3
+        env:
+          MVN_DEPLOY_JFROG_KEY: ${{ secrets.MVN_DEPLOY_JFROG_KEY }}
+          MVN_DEPLOY_JFROG_USER: ${{ secrets.MVN_DEPLOY_JFROG_USER }}
