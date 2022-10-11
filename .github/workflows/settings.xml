@@ -23,13 +23,13 @@
   <servers>
     <server>
       <id>jfrog-linkedin-release</id>
-      <username>qqu</username>
-      <password>cmVmdGtuOjAxOjE2OTYzNTQxNzA6TlVRNXBxU2xraHB5SE81dzlNTGtINGM0SzJq</password>
+      <username>${env.MVN_DEPLOY_JFROG_USER}</username>
+      <password>${env.MVN_DEPLOY_JFROG_KEY}</password>
     </server>
     <server>
       <id>jfrog-linkedin-snapshots</id>
-      <username>qqu</username>
-      <password>cmVmdGtuOjAxOjE2OTYzNTQxNzA6TlVRNXBxU2xraHB5SE81dzlNTGtINGM0SzJq</password>
+      <username>${env.MVN_DEPLOY_JFROG_USER}</username>
+      <password>${env.MVN_DEPLOY_JFROG_KEY}</password>
     </server>
   </servers>
   <profiles>
