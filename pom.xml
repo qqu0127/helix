@@ -279,6 +279,7 @@
     <!--<module>helix-front</module>-->
     <module>recipes</module>
     <module>helix-view-aggregator</module>
+    <module>helix-linkedin-dep</module>
   </modules>
 
   <mailingLists>

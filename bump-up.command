@@ -63,7 +63,8 @@ echo "bump up: $version -> $new_version"
 update_pom_version "pom.xml"
 
 for module in "metrics-common" "metadata-store-directory-common" "zookeeper-api" "helix-common" "helix-core" \
-              "helix-admin-webapp" "helix-front" "helix-rest" "helix-lock" "helix-view-aggregator" "helix-agent"; do
+              "helix-admin-webapp" "helix-front" "helix-rest" "helix-lock" "helix-view-aggregator" "helix-agent" \
+              "helix-linkedin-dep"; do
   update_pom_version "$module/pom.xml"
   update_ivy $module
 done
