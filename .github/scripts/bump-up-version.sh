@@ -26,4 +26,4 @@ else
   timestamp=`date -u +'%Y%m%d%H%M'`
   new_version=`echo $current_version | cut -d'-' -f1`-dev-$timestamp
 fi
-sh ./bump-up.command $current_version $new_version
+sh ./.github/scripts/bump-up.sh $current_version $new_version

@@ -56,6 +56,8 @@ jobs:
         run: |
           cd helix-elr
           sh ./.github/scripts/bump-up-version.sh ${{ inputs.version }}
+          cp ./.github/scripts/bump-up-version.sh ../helix-main/.github/scripts/
+          cp ./.github/scripts/bump-up.sh ../helix-main/.github/scripts/
           cd ../helix-main
           sh ./.github/scripts/bump-up-version.sh ${{ inputs.version }}
       - name: Build with Maven
