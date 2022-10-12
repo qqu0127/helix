@@ -27,12 +27,21 @@ on:
       branch:
         description: 'The branch to build and publish'
         required: true
+      repo:
+        type: choice
+        description: 'The repository of the branch'
+        required: true
+        options:
+          - apache/helix
+          - qqu0127/helix
+          - linkedin/helix-elr
 jobs:
   deploy:
     name: deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: "Checkout helix branch"
+        uses: actions/checkout@v3
         with:
           repository: ${{ inputs.repo }}
           ref: ${{ inputs.branch }}
@@ -70,8 +79,8 @@ jobs:
         run: |
           cd helix-elr/helix-linkedin-dep
           mvn clean install -Dmaven.test.skip.exec=true
-      - name: Publish to jfrog
-        run: mvn clean deploy -DskipTests -s .github/workflows/settings.xml -DretryFailedDeploymentCount=3
-        env:
-          MVN_DEPLOY_JFROG_KEY: ${{ secrets.MVN_DEPLOY_JFROG_KEY }}
-          MVN_DEPLOY_JFROG_USER: ${{ secrets.MVN_DEPLOY_JFROG_USER }}
+#      - name: Publish to jfrog
+#        run: mvn clean deploy -DskipTests -s .github/workflows/settings.xml -DretryFailedDeploymentCount=3
+#        env:
+#          MVN_DEPLOY_JFROG_KEY: ${{ secrets.MVN_DEPLOY_JFROG_KEY }}
+#          MVN_DEPLOY_JFROG_USER: ${{ secrets.MVN_DEPLOY_JFROG_USER }}
