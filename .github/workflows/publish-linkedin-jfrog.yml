@@ -23,7 +23,7 @@ on:
     inputs:
       version:
         description: 'The version to publish to jfrog'
-        required: false
+        required: true
       branch:
         description: 'The branch to build and publish'
         required: true
@@ -34,27 +34,40 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          repository: apache/helix
-          ref: ${{ github.inputs.branch }}
+          repository: ${{ inputs.repo }}
+          ref: ${{ inputs.branch }}
+          path: helix-main
+      - name: "Checkout helix-elr"
+        uses: actions/checkout@v3
+        with:
+          path: helix-elr
       - name: Set up JDK 1.8
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
       - name: Extract branch name
         shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF##*/})"
+        run: |
+          cd helix-main
+          echo | git log -1
         id: extract_branch
-      - name: Bump up version
-        shell: bash
-        if: "${{ github.inputs.version == '' }}"
-        run: sh ./.github/scripts/bump-up-version.sh
       - name: Bump up version with manual input
         shell: bash
-        if: "${{ github.inputs.version != '' }}"
-        run: sh ./.github/scripts/bump-up-version.sh ${{ github.inputs.version }}
+        run: |
+          cd helix-elr
+          sh ./.github/scripts/bump-up-version.sh ${{ inputs.version }}
+          cd ../helix-main
+          sh ./.github/scripts/bump-up-version.sh ${{ inputs.version }}
       - name: Build with Maven
         shell: bash
-        run: ./build
+        run: |
+          cd helix-main
+          ./build
+      - name: Build helix-linkedin-dep
+        shell: bash
+        run: |
+          cd helix-elr/helix-linkedin-dep
+          mvn clean install -Dmaven.test.skip.exec=true
       - name: Publish to jfrog
         run: mvn clean deploy -DskipTests -s .github/workflows/settings.xml -DretryFailedDeploymentCount=3
         env:
